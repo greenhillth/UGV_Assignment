@@ -12,7 +12,7 @@ For clarification of inheritance requirements see diagram in the assignment spec
 */
 
 #include <iostream>
-#include <SMObjects.h>
+#include "SMObjects.h"
 
 // ERROR HANDLING. Use this as the return value in your functions
 enum error_state {

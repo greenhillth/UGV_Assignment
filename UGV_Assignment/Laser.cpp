@@ -2,22 +2,49 @@
 
 Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser)
 {
-
+	SM_Laser_ = SM_Laser;
+	SM_TM_ = SM_TM;
+	Watch = gcnew Stopwatch;
 }
 
 error_state Laser::setupSharedMemory()
 {
-    return error_state();
+	return SUCCESS;
 }
 
 void Laser::threadFunction()
 {
-    throw gcnew System::NotImplementedException();
+	Console::WriteLine("Laser thread is starting");
+	Watch = gcnew Stopwatch;
+	SM_TM_->ThreadBarrier->SignalAndWait();
+	Watch->Start();
+	while (!getShutdownFlag()) {
+		Console::WriteLine("Laser thread is running");
+		processHeartbeats();
+		if (communicate() == SUCCESS && checkData() == SUCCESS)
+		{
+			processSharedMemory();
+		}
+		Thread::Sleep(20);
+	}
+	Console::WriteLine("Laser thread is terminating");
 }
 
 error_state Laser::processHeartbeats()
 {
-    return error_state();
+	if ((SM_TM_->heartbeat & bit_LASER) == 0)
+	{
+		SM_TM_->heartbeat |= bit_LASER;	// put laser flag up
+		Watch->Restart();					// Restart stopwatch
+	}
+	else
+	{
+		if (Watch->ElapsedMilliseconds > CRASH_LIMIT_MS) {
+			shutdownThreads();
+			return ERR_TMT_TIMEOUT;
+		}
+	}
+	return SUCCESS;
 }
 
 void Laser::shutdownThreads()
@@ -27,7 +54,7 @@ void Laser::shutdownThreads()
 
 bool Laser::getShutdownFlag()
 {
-    return false;
+    return SM_TM_->shutdown & bit_LASER;
 }
 
 error_state Laser::communicate()

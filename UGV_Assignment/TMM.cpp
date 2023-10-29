@@ -19,12 +19,12 @@ error_state ThreadManagement::processSharedMemory()
 
 void ThreadManagement::shutdownModules()
 {
-	throw gcnew System::NotImplementedException();
+	SM_TM_->shutdown = 0xFF;
 }
 
 bool ThreadManagement::getShutdownFlag()
 {
-	return false;
+	return (SM_TM_->shutdown & bit_PM);
 }
 
 void ThreadManagement::threadFunction()

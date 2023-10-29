@@ -1,6 +1,31 @@
 #pragma once
-
+#using <System.dll>
 #include "UGVModule.h"
+#include "Laser.h"
+#include "GNSS.h"
+
+
+using namespace System;
+using namespace System::Threading;
+using namespace System::Diagnostics;
+
+ref struct ThreadProperties
+{
+    ThreadStart^ ThreadStart_;
+    bool Critical;
+    String^ ThreadName;
+    uint8_t BitID;
+
+    ThreadProperties(ThreadStart^ start, bool crit, uint8_t bit_id, String^ threadName)
+    {
+        ThreadStart_ = start;
+        Critical = crit;
+        ThreadName = threadName;
+        BitID = bit_id;
+
+    }
+
+};
 
 ref class ThreadManagement : public UGVModule {
 public:
@@ -15,9 +40,14 @@ public:
     // Get Shutdown signal for module, from Thread Management SM
     bool getShutdownFlag() override;
 
-    // Thread function for PMM
+    // Thread function for TMM
     void threadFunction() override;
 
+    error_state processHeartbeats();
+
 private:
-    // Add any additional data members or helper functions here
+    array<Thread^>^ ThreadList;
+    array<ThreadProperties^>^ ThreadPropertiesList;
+    array<Stopwatch^>^ StopwatchList;
+
 };

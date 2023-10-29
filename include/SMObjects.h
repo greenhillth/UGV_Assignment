@@ -30,10 +30,12 @@ constexpr uint8_t CRITICALMASK =    0x00;
 constexpr uint8_t bit_ALL =         0b00111111;
 constexpr uint8_t bit_PM =          0b00000001;
 constexpr uint8_t bit_LASER =       0b00000010;
-constexpr uint8_t bit_GPS =         0b00000100;
+constexpr uint8_t bit_GNSS =        0b00000100;
 constexpr uint8_t bit_VC =          0b00001000;
 constexpr uint8_t bit_CONTROLLER =  0b00010000;
 constexpr uint8_t bit_DISPLAY =     0b00100000;
+
+#define CRASH_LIMIT_MS    1000
 
 ref class SM_ThreadManagement
 {
@@ -66,7 +68,7 @@ public:
     }
 };
 
-ref class SM_GPS
+ref class SM_GNSS
 {
 public:
     Object^ lockObject;
@@ -74,7 +76,7 @@ public:
     double Easting;
     double Height;
 
-    SM_GPS() {
+    SM_GNSS() {
         lockObject = gcnew Object();
     }
 };
@@ -90,3 +92,4 @@ public:
         lockObject = gcnew Object();
     }
 };
+

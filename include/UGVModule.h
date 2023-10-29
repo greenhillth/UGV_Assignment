@@ -21,7 +21,8 @@ enum error_state {
 	ERR_NO_DATA,
 	ERR_INVALID_DATA,
 	ERR_SM,
-	ERR_CONNECTION
+	ERR_CONNECTION,
+	ERR_CRITICAL_THREAD_FAILURE
 	// Define your own additional error types as needed
 };
 
@@ -72,4 +73,9 @@ ref class UGVModule abstract
 
 	protected:
 		SM_ThreadManagement^ SM_TM_;
+		SM_Laser^ SM_Laser_;
+		SM_GNSS^ SM_GNSS_;
+		SM_VehicleControl^ SM_VehicleControl_;
+
+		Stopwatch^ Watch;
 };

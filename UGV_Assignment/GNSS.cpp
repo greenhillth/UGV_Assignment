@@ -52,10 +52,7 @@ void GNSS::shutdownThreads()
 	throw gcnew System::NotImplementedException();
 }
 
-bool GNSS::getShutdownFlag()
-{
-	return SM_TM_->shutdown & bit_GNSS;
-}
+bool GNSS::getShutdownFlag() { return SM_TM_->shutdown & bit_GNSS; }
 
 error_state GNSS::communicate()
 {

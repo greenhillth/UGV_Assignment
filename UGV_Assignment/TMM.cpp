@@ -22,10 +22,7 @@ void ThreadManagement::shutdownModules()
 	SM_TM_->shutdown = 0xFF;
 }
 
-bool ThreadManagement::getShutdownFlag()
-{
-	return (SM_TM_->shutdown & bit_PM);
-}
+bool ThreadManagement::getShutdownFlag() { return SM_TM_->shutdown & bit_PM; }
 
 void ThreadManagement::threadFunction()
 {

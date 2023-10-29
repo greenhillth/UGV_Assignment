@@ -14,3 +14,25 @@ void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, Networ
 	Thread::Sleep(10);
 	Stream->Write(dataY, 0, dataY->Length);
 }
+
+error_state Display::connect(String^ hostName, int portNumber)
+{
+	return error_state();
+}
+
+error_state Display::communicate()
+{
+	return error_state();
+}
+
+error_state Display::processSharedMemory()
+{
+	return error_state();
+}
+
+bool Display::getShutdownFlag() { return SM_TM_->shutdown & bit_DISPLAY; }
+
+void Display::threadFunction()
+{
+	throw gcnew System::NotImplementedException();
+}

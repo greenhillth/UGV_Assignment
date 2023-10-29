@@ -21,9 +21,9 @@ void Laser::threadFunction()
 	while (!getShutdownFlag()) {
 		Console::WriteLine("Laser thread is running");
 		processHeartbeats();
-		if (communicate() == SUCCESS && checkData() == SUCCESS)
+		if (communicate() == SUCCESS && checkData() == SUCCESS)		// Communicate and validate
 		{
-			processSharedMemory();
+			processSharedMemory();									// Print memory as per spec
 		}
 		Thread::Sleep(20);
 	}
@@ -52,11 +52,9 @@ void Laser::shutdownThreads()
     throw gcnew System::NotImplementedException();
 }
 
-bool Laser::getShutdownFlag()
-{
-    return SM_TM_->shutdown & bit_LASER;
-}
+bool Laser::getShutdownFlag() { return SM_TM_->shutdown & bit_LASER; }
 
+//TODO - Implement communication
 error_state Laser::communicate()
 {
     return error_state();

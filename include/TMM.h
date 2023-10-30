@@ -3,11 +3,9 @@
 #include "UGVModule.h"
 #include "Laser.h"
 #include "GNSS.h"
-
-
-using namespace System;
-using namespace System::Threading;
-using namespace System::Diagnostics;
+#include "VC.h"
+#include "Display.h"
+#include "Controller.h"
 
 ref struct ThreadProperties
 {

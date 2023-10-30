@@ -23,7 +23,8 @@ enum error_state {
 	ERR_SM,
 	ERR_CONNECTION,
 	ERR_CRITICAL_THREAD_FAILURE,
-	ERR_TMT_TIMEOUT
+	ERR_TMS_TIMEOUT,
+	ERR_NO_DATA_RECEIVED
 	// Define your own additional error types as needed
 };
 
@@ -76,7 +77,7 @@ ref class UGVModule abstract
 		SM_ThreadManagement^ SM_TM_;
 		SM_Laser^ SM_Laser_;
 		SM_GNSS^ SM_GNSS_;
-		SM_VehicleControl^ SM_VehicleControl_;
+		SM_VC^ SM_VC_;
 
 		Stopwatch^ Watch;
 };

@@ -8,9 +8,7 @@ int main(void) {
 	ThreadManagement^ myTMT = gcnew ThreadManagement();
 
 	myTMT->setupSharedMemory();
-
 	myTMT->threadFunction();
 
-	Console::ReadKey();
 	return 0;
 }

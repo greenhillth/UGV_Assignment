@@ -41,7 +41,7 @@ error_state GNSS::processHeartbeats()
 	{
 		if (Watch->ElapsedMilliseconds > CRASH_LIMIT_MS) {
 			shutdownThreads();
-			return ERR_TMT_TIMEOUT;
+			return ERR_TMS_TIMEOUT;
 		}
 	}
 	return SUCCESS;

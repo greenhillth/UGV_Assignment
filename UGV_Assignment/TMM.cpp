@@ -7,7 +7,7 @@ error_state ThreadManagement::setupSharedMemory()
 	SM_TM_ = gcnew SM_ThreadManagement;
 	SM_Laser_ = gcnew SM_Laser;
 	SM_GNSS_ = gcnew SM_GNSS;
-	SM_VehicleControl_ = gcnew SM_VehicleControl;
+	SM_VC_ = gcnew SM_VC;
 
 	return SUCCESS;
 }
@@ -29,7 +29,11 @@ void ThreadManagement::threadFunction()
 	Console::WriteLine("TMT Thread is starting.");
 	ThreadPropertiesList = gcnew array<ThreadProperties^> {
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Laser(SM_TM_, SM_Laser_), &Laser::threadFunction), true, bit_LASER, "Laser Thread"),
-			gcnew ThreadProperties(gcnew ThreadStart(gcnew GNSS(SM_TM_, SM_GNSS_), &GNSS::threadFunction), false, bit_GNSS, "GNSS Thread")
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew GNSS(SM_TM_, SM_GNSS_), &GNSS::threadFunction), false, bit_GNSS, "GNSS Thread"),
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew Controller(SM_TM_), &Controller::threadFunction), true, bit_CONTROLLER, "Controller Thread"),
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew VehicleControl(SM_TM_, SM_VC_), &VehicleControl::threadFunction), true, bit_VC, "Vehicle Control Thread"),
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM_), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
+
 	};
 
 	ThreadList = gcnew array<Thread^>(ThreadPropertiesList->Length);		// Create list of threads
@@ -51,11 +55,16 @@ void ThreadManagement::threadFunction()
 		StopwatchList[i]->Start();
 	}
 
-	while (!Console::KeyAvailable && !getShutdownFlag())		// Check heartbeats
+	bool exitFlag = false;
+
+	while (!getShutdownFlag() && !exitFlag)		// Check heartbeats
 	{
 		Console::WriteLine("TMT Thread is running");
 		processHeartbeats();
 		Thread::Sleep(50);
+		if (Console::KeyAvailable) {
+			exitFlag = (Console::ReadKey(true).Key == ConsoleKey::Q);
+		}
 	}
 
 	shutdownModules();
@@ -95,4 +104,5 @@ error_state ThreadManagement::processHeartbeats()
 			}
 		}
 	}
+	return SUCCESS;
 }

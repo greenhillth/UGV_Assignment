@@ -81,14 +81,14 @@ public:
     }
 };
 
-ref class SM_VehicleControl
+ref class SM_VC
 {
 public:
     Object^ lockObject;
     double Speed;
     double Steering;
 
-    SM_VehicleControl() {
+    SM_VC() {
         lockObject = gcnew Object();
     }
 };

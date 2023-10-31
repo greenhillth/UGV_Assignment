@@ -60,12 +60,15 @@ public:
     Object^ lockObject;
     array<double>^ x;
     array<double>^ y;
+    bool^ valid;
 
     SM_Laser() {
         lockObject = gcnew Object();
         x = gcnew array<double>(STANDARD_LASER_LENGTH);
         y = gcnew array<double>(STANDARD_LASER_LENGTH);
+        valid = gcnew bool(false);
     }
+
 };
 
 ref class SM_GNSS

@@ -32,7 +32,7 @@ void ThreadManagement::threadFunction()
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew GNSS(SM_TM_, SM_GNSS_), &GNSS::threadFunction), false, bit_GNSS, "GNSS Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Controller(SM_TM_), &Controller::threadFunction), true, bit_CONTROLLER, "Controller Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew VehicleControl(SM_TM_, SM_VC_), &VehicleControl::threadFunction), true, bit_VC, "Vehicle Control Thread"),
-		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM_), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM_, SM_Laser_, SM_GNSS_), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
 
 	};
 
@@ -59,7 +59,7 @@ void ThreadManagement::threadFunction()
 
 	while (!getShutdownFlag() && !exitFlag)		// Check heartbeats
 	{
-		Console::WriteLine("TMT Thread is running");
+		//Console::WriteLine("TMT Thread is running");
 		processHeartbeats();
 		Thread::Sleep(50);
 		if (Console::KeyAvailable) {

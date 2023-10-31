@@ -20,7 +20,7 @@ void Controller::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		Console::WriteLine("Controller thread is running");
+		//Console::WriteLine("Controller thread is running");
 		processHeartbeats();
 		Thread::Sleep(20);
 	}
@@ -47,5 +47,4 @@ error_state Controller::processHeartbeats()
 
 void Controller::shutdownThreads()
 {
-	throw gcnew System::NotImplementedException();
 }

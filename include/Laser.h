@@ -25,5 +25,5 @@ public:
 	~Laser() {};
 private:
 	array<unsigned char>^ SendData;
-	
 };
+

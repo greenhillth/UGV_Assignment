@@ -28,6 +28,6 @@ ref class NetworkedModule abstract : public UGVModule
 		TcpClient^ Client;					// Handle for TCP connection
 		NetworkStream^ Stream;				// Handle for TCP data stream
 		array<unsigned char>^ ReadData;		// Array to store sensor Data (only used for sensor modules)
-//		int^ TcpPort;
-//		String^ DNS;
+		int^ TcpPort;
+		String^ DNS;
 };

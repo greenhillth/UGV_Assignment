@@ -1,8 +1,10 @@
 #include "Display.h"
 
-Display::Display(SM_ThreadManagement^ SM_TM)
+Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_gnss)
 {
 	SM_TM_ = SM_TM;
+	SM_Laser_ = SM_LASER;
+	SM_GNSS_ = SM_gnss;
 	Watch = gcnew Stopwatch;
 }
 
@@ -23,7 +25,19 @@ void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, Networ
 
 error_state Display::connect(String^ hostName, int portNumber)
 {
-	return error_state();
+	Client = gcnew TcpClient(hostName, portNumber);
+	Stream = Client->GetStream();
+
+	Client->NoDelay = true;
+	Client->ReceiveTimeout = 500;
+	Client->SendTimeout = 500;
+	Client->ReceiveBufferSize = 1024;
+	Client->SendBufferSize = 1024;
+
+	ReadData = gcnew array<unsigned char>(128);
+	SendData = gcnew array<unsigned char>(128);
+
+	return SUCCESS;
 }
 
 error_state Display::communicate()
@@ -56,7 +70,6 @@ error_state Display::processHeartbeats()
 
 void Display::shutdownThreads()
 {
-	throw gcnew System::NotImplementedException();
 }
 
 bool Display::getShutdownFlag() { return SM_TM_->shutdown & bit_DISPLAY; }
@@ -68,7 +81,7 @@ void Display::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		Console::WriteLine("Display thread is running");
+		//Console::WriteLine("Display thread is running");
 		processHeartbeats();
 		Thread::Sleep(20);
 	}

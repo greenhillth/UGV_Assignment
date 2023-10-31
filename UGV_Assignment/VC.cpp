@@ -31,7 +31,7 @@ void VehicleControl::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		Console::WriteLine("Vehicle control thread is running");
+		//Console::WriteLine("Vehicle control thread is running");
 		processHeartbeats();
 		Thread::Sleep(20);
 	}
@@ -58,5 +58,4 @@ error_state VehicleControl::processHeartbeats()
 
 void VehicleControl::shutdownThreads()
 {
-	throw gcnew System::NotImplementedException();
 }

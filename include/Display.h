@@ -6,7 +6,7 @@
 ref class Display : public NetworkedModule
 {
 public:
-	Display(SM_ThreadManagement^ SM_TM);
+	Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_GNSS_);
 	void sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream);
 	error_state connect(String^ hostName, int portNumber) override;
 	error_state communicate() override;
@@ -17,5 +17,5 @@ public:
 	void threadFunction() override;
 
 private:
-
+	array<unsigned char>^ SendData;
 };

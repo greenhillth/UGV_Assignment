@@ -19,7 +19,7 @@ void GNSS::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		Console::WriteLine("GNSS thread is running");
+		//Console::WriteLine("GNSS thread is running");
 		processHeartbeats();
 		if (communicate() == SUCCESS && checkData() == SUCCESS)
 		{
@@ -49,7 +49,6 @@ error_state GNSS::processHeartbeats()
 
 void GNSS::shutdownThreads()
 {
-	throw gcnew System::NotImplementedException();
 }
 
 bool GNSS::getShutdownFlag() { return SM_TM_->shutdown & bit_GNSS; }

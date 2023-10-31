@@ -10,5 +10,6 @@ int main(void) {
 	myTMT->setupSharedMemory();
 	myTMT->threadFunction();
 
+
 	return 0;
 }

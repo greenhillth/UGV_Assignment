@@ -1,11 +1,20 @@
 #include "Display.h"
 
+#define DISPLAY_PORT  28000
+
+
 Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_gnss)
 {
 	SM_TM_ = SM_TM;
 	SM_Laser_ = SM_LASER;
 	SM_GNSS_ = SM_gnss;
 	Watch = gcnew Stopwatch;
+
+	TcpPort = DISPLAY_PORT;
+	DNS = gcnew String(DISPLAY_ADDRESS);
+
+	Client = gcnew TcpClient();
+	Stream = nullptr;
 }
 
 void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream) {
@@ -78,11 +87,13 @@ void Display::threadFunction()
 {
 	Console::WriteLine("Display thread is starting");
 	Watch = gcnew Stopwatch;
+	connect(DNS, TcpPort);
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
 		//Console::WriteLine("Display thread is running");
 		processHeartbeats();
+		sendDisplayData(SM_Laser_->x, SM_Laser_->y, Stream);
 		Thread::Sleep(20);
 	}
 	Console::WriteLine("Display thread is terminating");

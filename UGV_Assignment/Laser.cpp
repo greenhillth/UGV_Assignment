@@ -2,21 +2,20 @@
 
 #define LASER_PORT  23000
 
-
 //TODO - Add simulator address constructor functionality
 Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser)
 {
 	SM_Laser_ = SM_Laser;
 	SM_TM_ = SM_TM;
-	Watch = gcnew Stopwatch;
+	Watch = nullptr;
 
-	Client = gcnew TcpClient;
+	Client = nullptr;
 	Stream = nullptr;
 
-	TcpPort = gcnew int(LASER_PORT);
+	TcpPort = LASER_PORT;
 	DNS = gcnew String(WEEDER_ADDRESS);
 
-	ReadData = gcnew array<unsigned char>(128);
+	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
 }
 
@@ -29,7 +28,7 @@ error_state Laser::processSharedMemory()
 {
 	int numPoints;
 	array<String^>^ Frags;
-	if (ReadData->Length < 396) { return ERR_NO_DATA; }
+	if (ReadData->Length < 1544) { return ERR_NO_DATA; }
 	String^ Resp = Encoding::ASCII->GetString(ReadData);
 	Frags = Resp->Split(' ');
 
@@ -48,6 +47,7 @@ error_state Laser::processSharedMemory()
 	}
 	else
 	{
+		SM_Laser_->valid = false;
 		return error_state::ERR_INVALID_DATA;
 	}
 }
@@ -72,25 +72,12 @@ error_state Laser::processHeartbeats()
 
 void Laser::shutdownThreads()
 {
-    throw gcnew System::NotImplementedException();
+	Client->Close();
+	Console::WriteLine("Laser thread is terminating");
 }
 
 bool Laser::getShutdownFlag() { return SM_TM_->shutdown & bit_LASER; }
 
-error_state Laser::updateReadings()
-{
-	if (sendCommand("sRN LMDscandata") == SUCCESS) {
-		//parse recieved info and save in sm_laser
-
-	}
-
-	return error_state();
-}
-
-error_state Laser::checkData()
-{
-    return error_state();
-}
 
 // Networking Functions
 
@@ -104,8 +91,8 @@ error_state Laser::connect(String^ hostName, int portNumber)
 	Client->NoDelay = true;
 	Client->ReceiveTimeout = 500;
 	Client->SendTimeout = 500;
-	Client->ReceiveBufferSize = 1024;
-	Client->SendBufferSize = 1024;
+	Client->ReceiveBufferSize = 2048;
+	Client->SendBufferSize = 128;
 
 	SendData = Encoding::ASCII->GetBytes(AuthString);
 	
@@ -114,7 +101,6 @@ error_state Laser::connect(String^ hostName, int portNumber)
 	String^ response = Encoding::ASCII->GetString(ReadData);
 	
 	if (response->Contains("OK\n")) {
-		//sendCommand("sRN LMDscandata");
 		return SUCCESS;
 	}
 	return ERR_CONNECTION;
@@ -123,31 +109,22 @@ error_state Laser::connect(String^ hostName, int portNumber)
 //TODO - Implement communication
 error_state Laser::communicate()
 {
-	bool sendCMD(false);
-	//TODO - Error handling for empty send string
 	if (SendData->Length == 0) return ERR_NO_DATA;
 	else if (SendData[0] == 0x02) {
 		Stream->Write(SendData, 0, 1);
-		System::Threading::Thread::Sleep(10);
 		Stream->Write(SendData, 1, SendData->Length - 2);
-		System::Threading::Thread::Sleep(10);
 		Stream->Write(SendData, SendData->Length - 1, 1);
-		System::Threading::Thread::Sleep(10);
-		sendCMD = true;
 	}
 	else {
 		Stream->Write(SendData, 0, SendData->Length);
 	}
-	//Array::Resize(SendData, 0);
-	//TODO - Add timeout functionality
+
+	//TIMEOUT
 	for (int i = 0; !Stream->DataAvailable && (i < 5); i++) {
 		System::Threading::Thread::Sleep(10);
 	}
 	
 	if (Stream->DataAvailable) {
-		if (sendCMD) {
-			Console::WriteLine("Read success");
-		}
 		Stream->Read(ReadData, 0, ReadData->Length);
 		return SUCCESS;
 	}
@@ -189,6 +166,5 @@ void Laser::threadFunction()
 		//}
 		Thread::Sleep(20);
 	}
-	Client->Close();
-	Console::WriteLine("Laser thread is terminating");
+	shutdownThreads();
 }

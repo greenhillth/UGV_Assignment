@@ -19,4 +19,6 @@ public:
 	error_state connect(String^ hostName, int portNumber) override;
 
 	~GNSS() {};
+private:
+	array<unsigned char>^ GNSSData;
 };

@@ -17,4 +17,5 @@ public:
 	void shutdownThreads();
 private:
 
+	SM_VC^ SM_VC_;
 };

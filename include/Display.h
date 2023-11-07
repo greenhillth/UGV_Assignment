@@ -18,4 +18,6 @@ public:
 
 private:
 	array<unsigned char>^ SendData;
+	SM_GNSS^ SM_GNSS_;
+	SM_Laser^ SM_Laser_;
 };

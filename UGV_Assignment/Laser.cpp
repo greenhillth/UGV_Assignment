@@ -36,8 +36,8 @@ error_state Laser::processSharedMemory()
 	Monitor::Enter(SM_Laser_->lockObject);
 	for (int i = 0; i < numPoints; i++)
 	{
-		SM_Laser_->x[i] = Convert::ToInt32(Frags[26 + i], 16) * Math::Cos(i * 0.05 * Math::PI / 180);
-		SM_Laser_->y[i] = Convert::ToInt32(Frags[26 + i], 16) * Math::Sin(i * 0.05 * Math::PI / 180);
+		SM_Laser_->x[i] = Convert::ToInt32(Frags[26 + i], 16) * Math::Sin(i * 0.5 * Math::PI / 180);
+		SM_Laser_->y[i] = -1*Convert::ToInt32(Frags[26 + i], 16) * Math::Cos(i * 0.5 * Math::PI / 180);
 	}
 	Monitor::Exit(SM_Laser_->lockObject);
 	if (Frags->Length == 400)
@@ -153,7 +153,6 @@ void Laser::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start(); 
 	while (!getShutdownFlag()) {
-		Console::WriteLine(Client->Connected);
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();

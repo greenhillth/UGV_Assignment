@@ -60,13 +60,12 @@ public:
     Object^ lockObject;
     array<double>^ x;
     array<double>^ y;
-    bool^ valid;
+    bool valid;
 
     SM_Laser() {
         lockObject = gcnew Object();
         x = gcnew array<double>(STANDARD_LASER_LENGTH);
         y = gcnew array<double>(STANDARD_LASER_LENGTH);
-        valid = gcnew bool(false);
     }
 
 };
@@ -78,6 +77,8 @@ public:
     double Northing;
     double Easting;
     double Height;
+    bool valid;
+
 
     SM_GNSS() {
         lockObject = gcnew Object();

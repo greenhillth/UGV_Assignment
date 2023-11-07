@@ -75,9 +75,5 @@ ref class UGVModule abstract
 
 	protected:
 		SM_ThreadManagement^ SM_TM_;
-		SM_Laser^ SM_Laser_;
-		SM_GNSS^ SM_GNSS_;
-		SM_VC^ SM_VC_;
-
 		Stopwatch^ Watch;
 };

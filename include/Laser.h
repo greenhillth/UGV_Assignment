@@ -23,5 +23,6 @@ public:
 	~Laser() {};
 private:
 	array<unsigned char>^ SendData;
+	SM_Laser^ SM_Laser_;
 };
 

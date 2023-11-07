@@ -3,11 +3,11 @@
 #define DISPLAY_PORT  28000
 
 
-Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_gnss)
+Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_GNSS)
 {
 	SM_TM_ = SM_TM;
 	SM_Laser_ = SM_LASER;
-	SM_GNSS_ = SM_gnss;
+	SM_GNSS_ = SM_GNSS;
 	Watch = gcnew Stopwatch;
 
 	TcpPort = DISPLAY_PORT;

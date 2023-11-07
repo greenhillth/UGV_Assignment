@@ -3,6 +3,8 @@
 #using <System.dll>
 #include "NetworkedModule.h"
 
+unsigned long CRC32Value(int i);
+unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer);
 
 ref class GNSS : public NetworkedModule
 {
@@ -21,4 +23,5 @@ public:
 	~GNSS() {};
 private:
 	array<unsigned char>^ GNSSData;
+	SM_GNSS^ SM_GNSS_;
 };

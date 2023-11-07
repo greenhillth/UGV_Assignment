@@ -1,11 +1,11 @@
 #pragma once
 #using <System.dll>
+#include "Controller.h"
 #include "UGVModule.h"
 #include "Laser.h"
 #include "GNSS.h"
 #include "VC.h"
 #include "Display.h"
-#include "Controller.h"
 
 ref struct ThreadProperties
 {
@@ -20,7 +20,6 @@ ref struct ThreadProperties
         Critical = crit;
         ThreadName = threadName;
         BitID = bit_id;
-
     }
 
 };
@@ -44,6 +43,9 @@ public:
     error_state processHeartbeats();
 
 private:
+     SM_Laser^ SM_Laser_;
+     SM_GNSS^ SM_GNSS_;
+     SM_VC^ SM_VC_;
     array<Thread^>^ ThreadList;
     array<ThreadProperties^>^ ThreadPropertiesList;
     array<Stopwatch^>^ StopwatchList;

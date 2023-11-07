@@ -2,6 +2,38 @@
 
 #define GNSS_PORT 24000
 
+#define CRC32_POLYNOMIAL 0xEDB88320L
+
+unsigned long CRC32Value(int i)
+{
+	int j;
+	unsigned long ulCRC;
+	ulCRC = i;
+	for (j = 8; j > 0; j--)
+	{
+		if (ulCRC & 1)
+			ulCRC = (ulCRC >> 1) ^ CRC32_POLYNOMIAL;
+		else
+			ulCRC >>= 1;
+	}
+	return ulCRC;
+}
+
+unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer)
+{
+	unsigned long ulTemp1;
+	unsigned long ulTemp2;
+	unsigned long ulCRC = 0;
+	while (ulCount-- != 0)
+	{
+		ulTemp1 = (ulCRC >> 8) & 0x00FFFFFFL;
+		ulTemp2 = CRC32Value(((int)ulCRC ^ *ucBuffer++) & 0xff);
+		ulCRC = ulTemp1 ^ ulTemp2;
+	}
+	return(ulCRC);
+}
+
+
 GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS)
 {
 	SM_GNSS_ = SM_GNSS;
@@ -63,6 +95,9 @@ error_state GNSS::communicate()
 
 error_state GNSS::checkData()
 {
+	/*
+	CRC
+	*/
 	return SUCCESS;
 }
 
@@ -72,6 +107,7 @@ error_state GNSS::processSharedMemory()
 	SM_GNSS_->Northing = BitConverter::ToDouble(GNSSData, 40);
 	SM_GNSS_->Easting = BitConverter::ToDouble(GNSSData, 48);
 	SM_GNSS_->Height = BitConverter::ToDouble(GNSSData, 56);
+	//SM_GNSS_->CRC = BitConverter::ToDouble(GNSSData, 80);
 	Monitor::Exit(SM_GNSS_->lockObject);
 	for (int i = 0; i < 108; i++) { GNSSData[i] = 0; }
 	
@@ -99,15 +135,14 @@ void GNSS::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		//
-		// 
-		// 
-		// Console::WriteLine("GNSS thread is running");
+		
 		processHeartbeats();
+		/*
 		if (communicate() == SUCCESS && checkData() == SUCCESS)
 		{
 			processSharedMemory();
 		}
+		*/
 		Thread::Sleep(20);
 	}
 	Console::WriteLine("GNSS thread is terminating");

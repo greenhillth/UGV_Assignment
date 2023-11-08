@@ -13,7 +13,6 @@ ref struct ThreadProperties
     bool Critical;
     String^ ThreadName;
     uint8_t BitID;
-    int status;
 
     ThreadProperties(ThreadStart^ start, bool crit, uint8_t bit_id, String^ threadName)
     {
@@ -47,8 +46,6 @@ private:
      SM_Laser^ SM_Laser_;
      SM_GNSS^ SM_GNSS_;
      SM_VC^ SM_VC_;
-     SM_Display^ SM_DISPLAY_;
-
     array<Thread^>^ ThreadList;
     array<ThreadProperties^>^ ThreadPropertiesList;
     array<Stopwatch^>^ StopwatchList;

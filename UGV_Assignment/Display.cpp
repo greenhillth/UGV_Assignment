@@ -3,227 +3,98 @@
 #define DISPLAY_PORT  28000
 
 
-Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
+Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_GNSS^ SM_GNSS)
 {
-    SM_TM_ = SM_TM;
-    SM_Laser_ = SM_LASER;
-    SM_DISPLAY = SM_DISPLAY;
-    Watch = gcnew Stopwatch;
+	SM_TM_ = SM_TM;
+	SM_Laser_ = SM_LASER;
+	SM_GNSS_ = SM_GNSS;
+	Watch = gcnew Stopwatch;
 
-    TcpPort = DISPLAY_PORT;
-    DNS = gcnew String(DISPLAY_ADDRESS);
+	TcpPort = DISPLAY_PORT;
+	DNS = gcnew String(DISPLAY_ADDRESS);
 
-    Client = gcnew TcpClient();
-    Stream = nullptr;
-    cli = gcnew cliInterface(SM_TM_, SM_DISPLAY);
+	Client = gcnew TcpClient();
+	Stream = nullptr;
 }
 
 void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream) {
-    // Serialize the data arrays to a byte array
-    //(format required for sending)
-    array<Byte>^ dataX =
-        gcnew array<Byte>(SM_Laser_->x->Length * sizeof(double));
-    Buffer::BlockCopy(SM_Laser_->x, 0, dataX, 0, dataX->Length);
-    array<Byte>^ dataY =
-        gcnew array<Byte>(SM_Laser_->y->Length * sizeof(double));
-    Buffer::BlockCopy(SM_Laser_->y, 0, dataY, 0, dataY->Length);
-    // Send byte data over connection
-    Stream->Write(dataX, 0, dataX->Length);
-    Thread::Sleep(10);
-    Stream->Write(dataY, 0, dataY->Length);
+	// Serialize the data arrays to a byte array
+	//(format required for sending)
+	array<Byte>^ dataX =
+		gcnew array<Byte>(SM_Laser_->x->Length * sizeof(double));
+	Buffer::BlockCopy(SM_Laser_->x, 0, dataX, 0, dataX->Length);
+	array<Byte>^ dataY =
+		gcnew array<Byte>(SM_Laser_->y->Length * sizeof(double));
+	Buffer::BlockCopy(SM_Laser_->y, 0, dataY, 0, dataY->Length);
+	// Send byte data over connection
+	Stream->Write(dataX, 0, dataX->Length);
+	Thread::Sleep(10);
+	Stream->Write(dataY, 0, dataY->Length);
 }
 
 error_state Display::connect(String^ hostName, int portNumber)
 {
-    Client = gcnew TcpClient(hostName, portNumber);
-    Stream = Client->GetStream();
+	Client = gcnew TcpClient(hostName, portNumber);
+	Stream = Client->GetStream();
 
-    Client->NoDelay = true;
-    Client->ReceiveTimeout = 500;
-    Client->SendTimeout = 500;
-    Client->ReceiveBufferSize = 1024;
-    Client->SendBufferSize = 1024;
+	Client->NoDelay = true;
+	Client->ReceiveTimeout = 500;
+	Client->SendTimeout = 500;
+	Client->ReceiveBufferSize = 1024;
+	Client->SendBufferSize = 1024;
 
-    ReadData = gcnew array<unsigned char>(128);
-    SendData = gcnew array<unsigned char>(128);
+	ReadData = gcnew array<unsigned char>(128);
+	SendData = gcnew array<unsigned char>(128);
 
-    return SUCCESS;
+	return SUCCESS;
 }
 
 error_state Display::communicate()
 {
-    return error_state();
+	return error_state();
 }
 
 error_state Display::processSharedMemory()
 {
-    return error_state();
+	return error_state();
 }
 
 error_state Display::processHeartbeats()
 {
-    if ((SM_TM_->heartbeat & bit_DISPLAY) == 0)
-    {
-        SM_TM_->heartbeat |= bit_DISPLAY;	// put laser flag up
-        Watch->Restart();					// Restart stopwatch
-    }
-    else
-    {
-        if (Watch->ElapsedMilliseconds > CRASH_LIMIT_MS) {
+	if ((SM_TM_->heartbeat & bit_DISPLAY) == 0)
+	{
+		SM_TM_->heartbeat |= bit_DISPLAY;	// put laser flag up
+		Watch->Restart();					// Restart stopwatch
+	}
+	else
+	{
+		if (Watch->ElapsedMilliseconds > CRASH_LIMIT_MS) {
 
-            shutdownThreads();
-            return ERR_TMS_TIMEOUT;
-        }
-    }
-    return SUCCESS;
+			shutdownThreads();
+			return ERR_TMS_TIMEOUT;
+		}
+	}
+	return SUCCESS;
 }
 
 void Display::shutdownThreads()
-{}
+{
+}
 
 bool Display::getShutdownFlag() { return SM_TM_->shutdown & bit_DISPLAY; }
 
-
 void Display::threadFunction()
 {
-    Console::WriteLine("Display thread is starting");
-    Watch = gcnew Stopwatch;
-    //connect(DNS, TcpPort);
-    cli->init();
-    SM_TM_->ThreadBarrier->SignalAndWait();
-    Watch->Start();
-    while (!getShutdownFlag()) {
-        //Console::WriteLine("Display thread is running");
-        processHeartbeats();
-        //sendDisplayData(SM_Laser_->x, SM_Laser_->y, Stream);
-        cli->update();
-        Thread::Sleep(20);
-    }
-    Console::WriteLine("Display thread is terminating");
-}
-
-/*
-struct
-threadValues
-[9, 7] [27, 7] [45, 7] [63, 7] [81, 7] [99, 7]
-[11]
-
-controllerInputs
-[21, 19] [21, 20] [21, 21] [21, 22]
-left      rightT   rightS   a button
-
-coords
-[53, 23]
-
-
-
-*/
-
-
-cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData) : ThreadInfo(ThreadInfo), displayData(displayData)
-{
-    windowActive = false;
-    elemPositions = gcnew array<uint8_t, 3>(5, 6, 2) {
-        { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
-        { { 55, 22 } },                                                   // GPS co-ord
-        { { 50, 13 } },                                                   // CMD co-ord
-        { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 20, 21 } },               // Controller co-ords
-        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 } }              // Connection co-ords
-    };
-
-}
-
-void cliInterface::init()
-{
-    windowActive = true;
-    Console::CursorVisible = false;
-    //Console::SetWindowSize(120, 36);
-    Console::Write("Initialising display interface");
-    Thread::Sleep(50);
-    Console::Clear();
-
-    Console::WriteLine("=======================================================================================================================\n" +
-                       "                                                UGV DISPLAY WINDOW v1.00                                               \n" +
-                       "=======================================================================================================================\n" +
-                       "                                                    THREAD STATUS                                                      \n" +
-                       "        Thread #1         Thread #2         Thread #3         Thread #4         Thread #5         Thread #6            \n" +
-                       "            TMM              Laser             GNSS           Controller      Vehicle Control      Display             \n" +
-                       "        ###########       ###########       ###########       ###########       ###########       ###########          \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                     LAST COMMAND SENT:                                                \n" +
-                       "                                                 # <steer> <speed> <flag> #                                            \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "    Controller Inputs:                                          ||                        Connection Status:           \n" +
-                       "    [button] : [value]                              ____________||__                      Laser - Connected            \n" +
-                       "    left trigger  : 0.1203                       [=|   WEEDER      |]                     Display - Connected          \n" +
-                       "    right trigger : 0.120                         ~_|_____________ |                      GNSS - Connected             \n" +
-                       "    right stick   : 0.23                            //||      || ||                       Controller - Connected       \n" +
-                       "    A button      : true                           (_)(_)    (_)(_)                                                    \n" +
-                       "                                               Coords - x,y,z                        Uptime:                           \n" +
-                       "=======================================================================================================================\n" +
-                       "=======================================================================================================================\n" +
-                       "(press Q to quit)");
-}
-
-void cliInterface::update()
-{
-    if (windowActive) {
-        updateThreadStatus();
-        updateGPS();
-        updateCMD();
-        //updateController();
-        updateConnectionStatus();
-    }
-}
-
-void cliInterface::updateThreadStatus()
-{
-    auto green = ConsoleColor::Green;
-    auto red = ConsoleColor::Red;
-    for (int i = 0; i < 6; i++) {
-        auto status = displayData->threadStatus[i];
-        Console::SetCursorPosition(elemPositions[THREAD, i, 0], elemPositions[THREAD, i, 1]);       //set cursor position
-        if (status == Threading::ThreadState::Running) { Console::ForegroundColor = green; Console::Write("  Running  "); }                    //write 
-        else if (status == Threading::ThreadState::Stopped) { Console::ForegroundColor = red; Console::Write("  Stopped  "); }
-        else if (status == Threading::ThreadState::Suspended) { Console::Write(" Suspended "); }
-        else if (status == Threading::ThreadState::Background) { Console::Write("Background "); }
-        else if (status == Threading::ThreadState::WaitSleepJoin) { Console::Write("  Waiting  "); }
-        else { Console::Write("doin stuff"); }
-        Console::ResetColor();
-    }
-}
-
-void cliInterface::updateGPS()
-{
-    double northing = displayData->GPSData[0];
-    double easting = displayData->GPSData[1];
-    double height = displayData->GPSData[2];
-    
-    Console::SetCursorPosition(elemPositions[GPS, 0, 0], elemPositions[GPS, 0, 1]);       //set cursor position
-    Console::Write("{0:N}, {1:N}, {2:N}         ",northing, easting, height);
-}
-
-void cliInterface::updateCMD()
-{
-    Console::SetCursorPosition(elemPositions[CMD, 0, 0], elemPositions[CMD, 0, 1]);       //set cursor position
-    Console::Write(displayData->sentCommand);
-}
-
-void cliInterface::updateController()
-{
-    double controllerVals[3] = {displayData->Controller->leftTrigger,
-        displayData->Controller->rightTrigger, displayData->Controller->rightThumbX};
-    for (int i = 0; i < 3; i++) {
-        Console::SetCursorPosition(elemPositions[CONTROLLER, i, 0], elemPositions[CONTROLLER, i, 1]);       //set cursor position
-        Console::Write("{0:N}      ", controllerVals[i]);
-    }
-}
-
-void cliInterface::updateConnectionStatus()
-{
+	Console::WriteLine("Display thread is starting");
+	Watch = gcnew Stopwatch;
+	connect(DNS, TcpPort);
+	SM_TM_->ThreadBarrier->SignalAndWait();
+	Watch->Start();
+	while (!getShutdownFlag()) {
+		//Console::WriteLine("Display thread is running");
+		processHeartbeats();
+		sendDisplayData(SM_Laser_->x, SM_Laser_->y, Stream);
+		Thread::Sleep(20);
+	}
+	Console::WriteLine("Display thread is terminating");
 }

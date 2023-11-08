@@ -6,7 +6,7 @@ Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_)
 	SM_VC_ = SM_VC_;
 	Watch = nullptr;
 
-	connectedController = new ControllerInterface(1, 0);
+	connectedController = new ControllerInterface();
 	currentState = connectedController->GetState();
 	input = false;
 }
@@ -57,10 +57,7 @@ void Controller::threadFunction()
 		processHeartbeats();
 		
 		if (connectedController->IsConnected()) {
-			Console::SetCursorPosition(0, 8);
-			Console::Clear();
 			connectedController->printControllerState(currentState);
-			processSharedMemory();
 
 		}
 		Thread::Sleep(20);

@@ -107,7 +107,7 @@ error_state GNSS::processSharedMemory()
 	SM_GNSS_->Northing = BitConverter::ToDouble(GNSSData, 40);
 	SM_GNSS_->Easting = BitConverter::ToDouble(GNSSData, 48);
 	SM_GNSS_->Height = BitConverter::ToDouble(GNSSData, 56);
-	SM_GNSS_->CRC = BitConverter::ToUInt32(GNSSData, 80);
+	//SM_GNSS_->CRC = BitConverter::ToDouble(GNSSData, 80);
 	Monitor::Exit(SM_GNSS_->lockObject);
 	for (int i = 0; i < 108; i++) { GNSSData[i] = 0; }
 	

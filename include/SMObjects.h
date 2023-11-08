@@ -9,7 +9,7 @@ This file outlines the objects that should be utilised for shared memory between
 individual modules. These should all be created by the thread management module and 
 shared to other modules as required.
 */
-
+#include "ControllerInterface.h"
 #using <System.dll>
 #include <iostream>
 #include <cstdint>
@@ -77,7 +77,7 @@ public:
     double Northing;
     double Easting;
     double Height;
-    bool valid;
+    unsigned long CRC;
 
 
     SM_GNSS() {
@@ -92,8 +92,33 @@ public:
     double Speed;
     double Steering;
 
+    String^ formattedCMD;
+
+    controllerState* Controller;
+
     SM_VC() {
         lockObject = gcnew Object();
     }
+    ~SM_VC() { delete Controller; }
+};
+
+ref class SM_Display
+{
+public:
+    Object^ lockObject;
+    array<Threading::ThreadState>^ threadStatus;
+    array<String^>^ connectionStatus;
+    controllerState* Controller;
+    String^ sentCommand;
+    array <double>^ GPSData;
+    SM_Display() {
+        lockObject = gcnew Object();
+        threadStatus = gcnew array<Threading::ThreadState>(6);
+        connectionStatus = gcnew array<String^>(4);
+        GPSData = gcnew array <double> (3);
+        controllerState* Controller = new controllerState;
+    }
+    ~SM_Display() { delete Controller; }
+   
 };
 

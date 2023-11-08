@@ -14,7 +14,7 @@ For clarification of inheritance requirements see diagram in the assignment spec
 
 // You will need to select which address to use depending on if you are working with the simulator (127.0.0.1)
 // or the physical robot in the lab (192.168.1.200).
-#define WEEDER_ADDRESS "192.168.1.200"
+#define WEEDER_ADDRESS "127.0.0.1"
 //#define WEEDER_ADDRESS "192.168.1.200"
 #define DISPLAY_ADDRESS "127.0.0.1" // Display is always running locally
 
@@ -32,4 +32,6 @@ ref class NetworkedModule abstract : public UGVModule
 		array<unsigned char>^ ReadData;		// Array to store sensor Data (only used for sensor modules)
 		int TcpPort;
 		String^ DNS;
+
+		SM_Display^ SM_DISPLAY;
 };

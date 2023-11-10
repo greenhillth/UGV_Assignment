@@ -3,10 +3,11 @@
 #define LASER_PORT  23000
 
 //TODO - Add simulator address constructor functionality
-Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser)
+Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser, SM_Display^ SM_DISPLAY)
 {
 	SM_Laser_ = SM_Laser;
 	SM_TM_ = SM_TM;
+	SM_DISPLAY_ = SM_DISPLAY;
 	Watch = nullptr;
 
 	Client = nullptr;
@@ -156,6 +157,7 @@ void Laser::threadFunction()
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();
+		SM_DISPLAY_->connectionStatus[0] = Client->Connected;
 
 		if (SM_Laser_->valid) {}
 

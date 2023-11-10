@@ -34,10 +34,11 @@ unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer
 }
 
 
-GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS)
+GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS, SM_Display^ SM_DISPLAY)
 {
 	SM_GNSS_ = SM_GNSS;
 	SM_TM_ = SM_TM;
+	SM_DISPLAY_ = SM_DISPLAY;
 	Watch = nullptr;
 
 	Client = nullptr;
@@ -103,16 +104,26 @@ error_state GNSS::checkData()
 
 error_state GNSS::processSharedMemory()
 {
+	double Northing = BitConverter::ToDouble(GNSSData, 40);
+	double Easting = BitConverter::ToDouble(GNSSData, 48);
+	double Height = BitConverter::ToDouble(GNSSData, 56);
+
 	Monitor::Enter(SM_GNSS_->lockObject);
-	SM_GNSS_->Northing = BitConverter::ToDouble(GNSSData, 40);
-	SM_GNSS_->Easting = BitConverter::ToDouble(GNSSData, 48);
-	SM_GNSS_->Height = BitConverter::ToDouble(GNSSData, 56);
+	SM_GNSS_->Northing = Northing;
+	SM_GNSS_->Easting = Easting;
+	SM_GNSS_->Height = Height;
 	SM_GNSS_->CRC = BitConverter::ToUInt32(GNSSData, 80);
 	Monitor::Exit(SM_GNSS_->lockObject);
 	for (int i = 0; i < 108; i++) { GNSSData[i] = 0; }
-	
+
+	SM_DISPLAY_->GPSData[0] = Northing;
+	SM_DISPLAY_->GPSData[1] = Easting;
+	SM_DISPLAY_->GPSData[2] = Height;
 	return SUCCESS;
-}
+};
+
+
+
 
 error_state GNSS::connect(String^ hostName, int portNumber)
 {
@@ -137,6 +148,7 @@ void GNSS::threadFunction()
 	while (!getShutdownFlag()) {
 		
 		processHeartbeats();
+		SM_DISPLAY_->connectionStatus[2] = Client->Connected;
 		/*
 		if (communicate() == SUCCESS && checkData() == SUCCESS)
 		{

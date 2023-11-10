@@ -23,6 +23,7 @@ private:
 	void updateCMD();
 	void updateController();
 	void updateConnectionStatus();
+	void updateUptime();
 
 	bool windowActive;
 	SM_ThreadManagement^ ThreadInfo;

@@ -8,6 +8,7 @@ Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_
     SM_TM_ = SM_TM;
     SM_Laser_ = SM_LASER;
     SM_DISPLAY = SM_DISPLAY;
+
     Watch = gcnew Stopwatch;
 
     TcpPort = DISPLAY_PORT;
@@ -57,7 +58,8 @@ error_state Display::communicate()
 
 error_state Display::processSharedMemory()
 {
-    return error_state();
+    SM_DISPLAY_->connectionStatus[2] = Client->Connected;
+    return SUCCESS;
 }
 
 error_state Display::processHeartbeats()
@@ -127,7 +129,7 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
         { { 55, 22 } },                                                   // GPS co-ord
         { { 50, 13 } },                                                   // CMD co-ord
-        { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 20, 21 } },               // Controller co-ords
+        { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 4, 21 } },               // Controller co-ords
         { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 } }              // Connection co-ords
     };
 
@@ -148,7 +150,7 @@ void cliInterface::init()
                        "                                                    THREAD STATUS                                                      \n" +
                        "        Thread #1         Thread #2         Thread #3         Thread #4         Thread #5         Thread #6            \n" +
                        "            TMM              Laser             GNSS           Controller      Vehicle Control      Display             \n" +
-                       "        ###########       ###########       ###########       ###########       ###########       ###########          \n" +
+                       "        Initialising      Initialising      Initialising      Initialising      Initialising      Initialising         \n" +
                        "                                                                                                                       \n" +
                        "                                                                                                                       \n" +
                        "                                                                                                                       \n" +
@@ -160,11 +162,11 @@ void cliInterface::init()
                        "                                                                                                                       \n" +
                        "    Controller Inputs:                                          ||                        Connection Status:           \n" +
                        "    [button] : [value]                              ____________||__                      Laser - Connected            \n" +
-                       "    left trigger  : 0.1203                       [=|   WEEDER      |]                     Display - Connected          \n" +
-                       "    right trigger : 0.120                         ~_|_____________ |                      GNSS - Connected             \n" +
-                       "    right stick   : 0.23                            //||      || ||                       Controller - Connected       \n" +
-                       "    A button      : true                           (_)(_)    (_)(_)                                                    \n" +
-                       "                                               Coords - x,y,z                        Uptime:                           \n" +
+                       "    left trigger  :                              [=|   WEEDER      |]                     Display - Connected          \n" +
+                       "    right trigger :                               ~_|_____________ |                      GNSS - Connected             \n" +
+                       "    right stick   :                                 //||      || ||                       Controller - Connected       \n" +
+                       "                                                   (_)(_)    (_)(_)                                                    \n" +
+                       "                                               Coords:  x,y,z                        Uptime:                           \n" +
                        "=======================================================================================================================\n" +
                        "=======================================================================================================================\n" +
                        "(press Q to quit)");
@@ -176,9 +178,16 @@ void cliInterface::update()
         updateThreadStatus();
         updateGPS();
         updateCMD();
-        //updateController();
+        updateController();
         updateConnectionStatus();
+        updateUptime();
     }
+}
+
+void cliInterface::updateUptime() {
+    TimeSpan time = displayData->uptime->Elapsed;
+    Console::SetCursorPosition(93, 22);
+    Console::Write("{0:00}:{1:00}:{2:00}.{3:000}       ", time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
 }
 
 void cliInterface::updateThreadStatus()
@@ -188,11 +197,11 @@ void cliInterface::updateThreadStatus()
     for (int i = 0; i < 6; i++) {
         auto status = displayData->threadStatus[i];
         Console::SetCursorPosition(elemPositions[THREAD, i, 0], elemPositions[THREAD, i, 1]);       //set cursor position
-        if (status == Threading::ThreadState::Running) { Console::ForegroundColor = green; Console::Write("  Running  "); }                    //write 
-        else if (status == Threading::ThreadState::Stopped) { Console::ForegroundColor = red; Console::Write("  Stopped  "); }
-        else if (status == Threading::ThreadState::Suspended) { Console::Write(" Suspended "); }
-        else if (status == Threading::ThreadState::Background) { Console::Write("Background "); }
-        else if (status == Threading::ThreadState::WaitSleepJoin) { Console::Write("  Waiting  "); }
+        if (status == Threading::ThreadState::Running) { Console::ForegroundColor = green; Console::Write("  Running   "); }                    //write 
+        else if (status == Threading::ThreadState::Stopped) { Console::ForegroundColor = red; Console::Write("  Stopped   "); }
+        else if (status == Threading::ThreadState::Suspended) { Console::Write(" Suspended  "); }
+        else if (status == Threading::ThreadState::Background) { Console::Write("Background  "); }
+        else if (status == Threading::ThreadState::WaitSleepJoin) { Console::Write("  Waiting   "); }
         else { Console::Write("doin stuff"); }
         Console::ResetColor();
     }
@@ -215,15 +224,31 @@ void cliInterface::updateCMD()
 }
 
 void cliInterface::updateController()
-{
-    double controllerVals[3] = {displayData->Controller->leftTrigger,
-        displayData->Controller->rightTrigger, displayData->Controller->rightThumbX};
-    for (int i = 0; i < 3; i++) {
-        Console::SetCursorPosition(elemPositions[CONTROLLER, i, 0], elemPositions[CONTROLLER, i, 1]);       //set cursor position
-        Console::Write("{0:N}      ", controllerVals[i]);
+{   
+    auto inputs = displayData->Controller->GetState();
+    if (displayData->Controller != nullptr) {
+        double controllerVals[3] = { inputs.leftTrigger, inputs.rightTrigger, inputs.rightThumbX};
+        bool aButton = inputs.buttonA;
+        for (int i = 0; i < 3; i++) {
+            Console::SetCursorPosition(elemPositions[CONTROLLER, i, 0], elemPositions[CONTROLLER, i, 1]);       //set cursor position
+            Console::Write("{0:N}      ", controllerVals[i]);
+        }
+        Console::SetCursorPosition(elemPositions[CONTROLLER, 3, 0], elemPositions[CONTROLLER, 3, 1]);
+        if (aButton) {Console::Write("Button A pressed");}
+        else { Console::Write("                "); }
     }
+    
 }
 
 void cliInterface::updateConnectionStatus()
 {
+    auto green = ConsoleColor::Green;
+    auto red = ConsoleColor::Red;
+    auto status = displayData->connectionStatus;
+    for (int i = 0; i < status->Length; i++) {
+        Console::SetCursorPosition(elemPositions[CONNECTION, i, 0], elemPositions[CONNECTION, i, 1]);
+        if (status[i]) { Console::ForegroundColor = green; Console::Write("Connected   "); }
+        else { Console::ForegroundColor = red; Console::Write("Disconnected"); }
+    }
+    Console::ResetColor();
 }

@@ -9,7 +9,7 @@ unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer
 ref class GNSS : public NetworkedModule
 {
 public:
-	GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS);
+	GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS, SM_Display^ SM_DISPLAY);
 	error_state setupSharedMemory();
 	void threadFunction() override;
 	error_state processHeartbeats();

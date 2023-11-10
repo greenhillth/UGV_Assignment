@@ -1,14 +1,16 @@
 #include "Controller.h"
 
-Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_)
+Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY)
 {
 	SM_TM_ = SM_TM;
 	SM_VC_ = SM_VC_;
+	SM_DISPLAY_ = SM_DISPLAY;
 	Watch = nullptr;
 
 	connectedController = new ControllerInterface(1, 0);
 	currentState = connectedController->GetState();
 	input = false;
+	SM_DISPLAY_->Controller = connectedController;
 }
 
 Controller::~Controller()
@@ -18,7 +20,12 @@ Controller::~Controller()
 
 error_state Controller::processSharedMemory()
 {
-	currentState = connectedController->GetState();
+	if (connectedController->IsConnected()) {
+		SM_DISPLAY_->connectionStatus[3] = true;
+		currentState = connectedController->GetState();
+		SM_DISPLAY_->Controller = connectedController;
+	} else { SM_DISPLAY_->connectionStatus[3] = false; }
+
 	return SUCCESS;
 }
 
@@ -53,16 +60,8 @@ void Controller::threadFunction()
 	SM_TM_->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
-		//Console::WriteLine("Controller thread is running");
 		processHeartbeats();
-		
-		if (connectedController->IsConnected()) {
-			Console::SetCursorPosition(0, 8);
-			Console::Clear();
-			connectedController->printControllerState(currentState);
-			processSharedMemory();
-
-		}
+		processSharedMemory();
 		Thread::Sleep(20);
 	}
 	Console::WriteLine("Controller thread is terminating");

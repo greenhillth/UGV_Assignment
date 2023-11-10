@@ -33,5 +33,5 @@ ref class NetworkedModule abstract : public UGVModule
 		int TcpPort;
 		String^ DNS;
 
-		SM_Display^ SM_DISPLAY;
+		SM_Display^ SM_DISPLAY_;
 };

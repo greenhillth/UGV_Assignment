@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Networked Classes">
+      <UniqueIdentifier>{0a2fad30-4161-46e5-8259-17e191eed16e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Base Classes">
+      <UniqueIdentifier>{b262aae5-fc6a-4b40-a541-22c48db94206}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Non-Networked Classes">
+      <UniqueIdentifier>{b34aa57e-c0d3-46fb-b4ff-efb6c217bd5d}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Controller.cpp">
@@ -38,35 +47,35 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\include\Controller.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\include\ControllerInterface.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\Display.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\GNSS.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\Laser.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\NetworkedModule.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\SMObjects.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\TMM.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\include\UGVModule.h">
-      <Filter>Header Files</Filter>
+      <Filter>Resource Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\VC.h">
-      <Filter>Header Files</Filter>
+      <Filter>Header Files\Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\SMObjects.h">
+      <Filter>Header Files\Base Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NetworkedModule.h">
+      <Filter>Header Files\Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Laser.h">
+      <Filter>Header Files\Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\GNSS.h">
+      <Filter>Header Files\Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\TMM.h">
+      <Filter>Header Files\Non-Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Controller.h">
+      <Filter>Header Files\Non-Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\UGVModule.h">
+      <Filter>Header Files\Non-Networked Classes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\Display.h">
+      <Filter>Header Files\Networked Classes</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

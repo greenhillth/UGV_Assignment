@@ -94,12 +94,10 @@ public:
 
     String^ formattedCMD;
 
-    controllerState* Controller;
-
     SM_VC() {
         lockObject = gcnew Object();
     }
-    ~SM_VC() { delete Controller; }
+    ~SM_VC() {}
 };
 
 ref class SM_Display
@@ -107,16 +105,21 @@ ref class SM_Display
 public:
     Object^ lockObject;
     array<Threading::ThreadState>^ threadStatus;
-    array<String^>^ connectionStatus;
-    controllerState* Controller;
+    array<bool>^ connectionStatus;
+    ControllerInterface* Controller;
     String^ sentCommand;
     array <double>^ GPSData;
+    Stopwatch^ uptime;
     SM_Display() {
         lockObject = gcnew Object();
         threadStatus = gcnew array<Threading::ThreadState>(6);
-        connectionStatus = gcnew array<String^>(4);
+        connectionStatus = gcnew array<bool>(4);
         GPSData = gcnew array <double> (3);
-        controllerState* Controller = new controllerState;
+        uptime = gcnew Stopwatch;
+        uptime->Start();
+        
+        ControllerInterface* Controller = new ControllerInterface();
+
     }
     ~SM_Display() { delete Controller; }
    

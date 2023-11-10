@@ -1,9 +1,10 @@
 #include "Controller.h"
 
-Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY)
+constexpr int steeringScalar{-40};
+
+Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY) : SM_VC_{SM_VC_}
 {
 	SM_TM_ = SM_TM;
-	SM_VC_ = SM_VC_;
 	SM_DISPLAY_ = SM_DISPLAY;
 	Watch = nullptr;
 
@@ -18,13 +19,34 @@ Controller::~Controller()
 	delete connectedController;
 }
 
+void Controller::updateVC(bool controlling) {
+	if (!controlling) {
+		SM_VC_->Speed = 0;
+		SM_VC_->Steering = 0;
+	}
+	else {
+		SM_VC_->Speed = currentState.rightTrigger - currentState.leftTrigger;
+		SM_VC_->Steering = currentState.rightThumbX*steeringScalar;
+	}
+}
+
 error_state Controller::processSharedMemory()
 {
-	if (connectedController->IsConnected()) {
+	bool connected = connectedController->IsConnected();
+	Monitor::Enter(SM_DISPLAY_->lockObject);
+	if (connected) {
 		SM_DISPLAY_->connectionStatus[3] = true;
 		currentState = connectedController->GetState();
 		SM_DISPLAY_->Controller = connectedController;
-	} else { SM_DISPLAY_->connectionStatus[3] = false; }
+	}
+	else { 
+		SM_DISPLAY_->connectionStatus[3] = false;
+	}
+	Monitor::Exit(SM_DISPLAY_->lockObject);
+
+	Monitor::Enter(SM_VC_->lockObject);
+	updateVC(connected);
+	Monitor::Exit(SM_VC_->lockObject);
 
 	return SUCCESS;
 }

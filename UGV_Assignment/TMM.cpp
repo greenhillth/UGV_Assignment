@@ -74,7 +74,7 @@ void ThreadManagement::threadFunction()
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Laser(SM_TM_, SM_Laser_, SM_DISPLAY_), &Laser::threadFunction), true, bit_LASER, "Laser Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew GNSS(SM_TM_, SM_GNSS_, SM_DISPLAY_), &GNSS::threadFunction), false, bit_GNSS, "GNSS Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Controller(SM_TM_, SM_VC_, SM_DISPLAY_), &Controller::threadFunction), true, bit_CONTROLLER, "Controller Thread"),
-		gcnew ThreadProperties(gcnew ThreadStart(gcnew VehicleControl(SM_TM_, SM_VC_), &VehicleControl::threadFunction), true, bit_VC, "Vehicle Control Thread"),
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew VehicleControl(SM_TM_, SM_VC_, SM_DISPLAY_), &VehicleControl::threadFunction), true, bit_VC, "Vehicle Control Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM_, SM_Laser_, SM_DISPLAY_), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
 	};
 

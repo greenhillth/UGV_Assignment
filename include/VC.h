@@ -6,7 +6,7 @@
 ref class VehicleControl : public NetworkedModule
 {
 public:
-	VehicleControl(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_);
+	VehicleControl(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY);
 
 	error_state connect(String^ hostName, int portNumber) override;
 	error_state communicate() override;
@@ -15,7 +15,12 @@ public:
 	void threadFunction() override;
 	error_state processHeartbeats();
 	void shutdownThreads();
-private:
 
-	SM_VC^ SM_VC_;
+	void commandStr(double steer, double speed);
+
+private:
+	array<unsigned char>^ SendData;
+	SM_VC^ SM_VehicleControl;
+	String^ command;
+	bool flag;
 };

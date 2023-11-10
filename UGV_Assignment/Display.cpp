@@ -104,23 +104,6 @@ void Display::threadFunction()
     Console::WriteLine("Display thread is terminating");
 }
 
-/*
-struct
-threadValues
-[9, 7] [27, 7] [45, 7] [63, 7] [81, 7] [99, 7]
-[11]
-
-controllerInputs
-[21, 19] [21, 20] [21, 21] [21, 22]
-left      rightT   rightS   a button
-
-coords
-[53, 23]
-
-
-
-*/
-
 
 cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData) : ThreadInfo(ThreadInfo), displayData(displayData)
 {
@@ -130,16 +113,16 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 55, 22 } },                                                   // GPS co-ord
         { { 50, 13 } },                                                   // CMD co-ord
         { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 4, 21 } },               // Controller co-ords
-        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 } }              // Connection co-ords
+        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 }, { 95, 21} }              // Connection co-ords
     };
 
 }
 
 void cliInterface::init()
 {
+    //TODO - set appropriate buffer and window sizes to make display more robust
     windowActive = true;
     Console::CursorVisible = false;
-    //Console::SetWindowSize(120, 36);
     Console::Write("Initialising display interface");
     Thread::Sleep(50);
     Console::Clear();
@@ -157,7 +140,7 @@ void cliInterface::init()
                        "                                                                                                                       \n" +
                        "                                                                                                                       \n" +
                        "                                                     LAST COMMAND SENT:                                                \n" +
-                       "                                                 # <steer> <speed> <flag> #                                            \n" +
+                       "                                                                                                                       \n" +
                        "                                                                                                                       \n" +
                        "                                                                                                                       \n" +
                        "    Controller Inputs:                                          ||                        Connection Status:           \n" +
@@ -165,7 +148,7 @@ void cliInterface::init()
                        "    left trigger  :                              [=|   WEEDER      |]                     Display - Connected          \n" +
                        "    right trigger :                               ~_|_____________ |                      GNSS - Connected             \n" +
                        "    right stick   :                                 //||      || ||                       Controller - Connected       \n" +
-                       "                                                   (_)(_)    (_)(_)                                                    \n" +
+                       "                                                   (_)(_)    (_)(_)                       VC - Connected               \n" +
                        "                                               Coords:  x,y,z                        Uptime:                           \n" +
                        "=======================================================================================================================\n" +
                        "=======================================================================================================================\n" +
@@ -219,8 +202,10 @@ void cliInterface::updateGPS()
 
 void cliInterface::updateCMD()
 {
-    Console::SetCursorPosition(elemPositions[CMD, 0, 0], elemPositions[CMD, 0, 1]);       //set cursor position
-    Console::Write(displayData->sentCommand);
+    if (displayData->sentCommand != nullptr) {
+        Console::SetCursorPosition(elemPositions[CMD, 0, 0], elemPositions[CMD, 0, 1]);       //set cursor position
+        Console::Write("   "+ displayData->sentCommand + "   ");
+    }
 }
 
 void cliInterface::updateController()

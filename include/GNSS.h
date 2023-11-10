@@ -24,4 +24,5 @@ public:
 private:
 	array<unsigned char>^ GNSSData;
 	SM_GNSS^ SM_GNSS_;
+	unsigned int CRC;
 };

@@ -13,6 +13,8 @@ public:
 	void threadFunction() override;
 	error_state processHeartbeats();
 	void shutdownThreads();
+
+	void updateVC(bool controlling);
 private:
 	ControllerInterface* connectedController;
 	controllerState currentState;

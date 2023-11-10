@@ -96,10 +96,15 @@ error_state GNSS::communicate()
 
 error_state GNSS::checkData()
 {
-	/*
-	CRC
-	*/
-	return SUCCESS;
+	if (CRC == 0) { return ERR_NO_DATA; }
+	pin_ptr<unsigned char> charPtr = &GNSSData[0];
+	auto calculation = CalculateBlockCRC32(GNSSData->Length, charPtr);
+	auto crc = CRC;
+	bool result = calculation == CRC;
+	if (result) {
+		return SUCCESS;
+	}
+	return ERR_INVALID_DATA;
 }
 
 error_state GNSS::processSharedMemory()
@@ -112,8 +117,8 @@ error_state GNSS::processSharedMemory()
 	SM_GNSS_->Northing = Northing;
 	SM_GNSS_->Easting = Easting;
 	SM_GNSS_->Height = Height;
-	SM_GNSS_->CRC = BitConverter::ToUInt32(GNSSData, 80);
 	Monitor::Exit(SM_GNSS_->lockObject);
+	CRC = BitConverter::ToUInt32(GNSSData, 104);
 	for (int i = 0; i < 108; i++) { GNSSData[i] = 0; }
 
 	SM_DISPLAY_->GPSData[0] = Northing;
@@ -149,12 +154,10 @@ void GNSS::threadFunction()
 		
 		processHeartbeats();
 		SM_DISPLAY_->connectionStatus[2] = Client->Connected;
-		/*
 		if (communicate() == SUCCESS && checkData() == SUCCESS)
 		{
 			processSharedMemory();
 		}
-		*/
 		Thread::Sleep(20);
 	}
 	Console::WriteLine("GNSS thread is terminating");

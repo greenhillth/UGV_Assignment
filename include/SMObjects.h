@@ -113,7 +113,7 @@ public:
     SM_Display() {
         lockObject = gcnew Object();
         threadStatus = gcnew array<Threading::ThreadState>(6);
-        connectionStatus = gcnew array<bool>(4);
+        connectionStatus = gcnew array<bool>(5);
         GPSData = gcnew array <double> (3);
         uptime = gcnew Stopwatch;
         uptime->Start();

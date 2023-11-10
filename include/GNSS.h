@@ -23,6 +23,6 @@ public:
 	~GNSS() {};
 private:
 	array<unsigned char>^ GNSSData;
-	SM_GNSS^ SM_GNSS_;
+	SM_GNSS^ SM_GPS;
 	unsigned int CRC;
 };

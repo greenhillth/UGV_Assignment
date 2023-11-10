@@ -4,30 +4,22 @@
 
 
 Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
+    : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(DISPLAY_ADDRESS), DISPLAY_PORT), SM_LASER(SM_LASER)
 {
-    SM_TM_ = SM_TM;
-    SM_Laser_ = SM_LASER;
-    SM_DISPLAY = SM_DISPLAY;
-
-    Watch = gcnew Stopwatch;
-
-    TcpPort = DISPLAY_PORT;
-    DNS = gcnew String(DISPLAY_ADDRESS);
-
     Client = gcnew TcpClient();
     Stream = nullptr;
-    cli = gcnew cliInterface(SM_TM_, SM_DISPLAY);
+    cli = gcnew cliInterface(SM_TM, SM_DISPLAY);
 }
 
 void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream) {
     // Serialize the data arrays to a byte array
     //(format required for sending)
     array<Byte>^ dataX =
-        gcnew array<Byte>(SM_Laser_->x->Length * sizeof(double));
-    Buffer::BlockCopy(SM_Laser_->x, 0, dataX, 0, dataX->Length);
+        gcnew array<Byte>(SM_LASER->x->Length * sizeof(double));
+    Buffer::BlockCopy(SM_LASER->x, 0, dataX, 0, dataX->Length);
     array<Byte>^ dataY =
-        gcnew array<Byte>(SM_Laser_->y->Length * sizeof(double));
-    Buffer::BlockCopy(SM_Laser_->y, 0, dataY, 0, dataY->Length);
+        gcnew array<Byte>(SM_LASER->y->Length * sizeof(double));
+    Buffer::BlockCopy(SM_LASER->y, 0, dataY, 0, dataY->Length);
     // Send byte data over connection
     Stream->Write(dataX, 0, dataX->Length);
     Thread::Sleep(10);
@@ -58,15 +50,15 @@ error_state Display::communicate()
 
 error_state Display::processSharedMemory()
 {
-    SM_DISPLAY_->connectionStatus[2] = Client->Connected;
+    SM_DISPLAY->connectionStatus[2] = Client->Connected;
     return SUCCESS;
 }
 
 error_state Display::processHeartbeats()
 {
-    if ((SM_TM_->heartbeat & bit_DISPLAY) == 0)
+    if ((SM_TM->heartbeat & bit_DISPLAY) == 0)
     {
-        SM_TM_->heartbeat |= bit_DISPLAY;	// put laser flag up
+        SM_TM->heartbeat |= bit_DISPLAY;	// put laser flag up
         Watch->Restart();					// Restart stopwatch
     }
     else
@@ -83,21 +75,21 @@ error_state Display::processHeartbeats()
 void Display::shutdownThreads()
 {}
 
-bool Display::getShutdownFlag() { return SM_TM_->shutdown & bit_DISPLAY; }
+bool Display::getShutdownFlag() { return SM_TM->shutdown & bit_DISPLAY; }
 
 
 void Display::threadFunction()
 {
     Console::WriteLine("Display thread is starting");
     Watch = gcnew Stopwatch;
-    //connect(DNS, TcpPort);
+    //connect(DNS, PORT);
     cli->init();
-    SM_TM_->ThreadBarrier->SignalAndWait();
+    SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (!getShutdownFlag()) {
         //Console::WriteLine("Display thread is running");
         processHeartbeats();
-        //sendDisplayData(SM_Laser_->x, SM_Laser_->y, Stream);
+        //sendDisplayData(SM_LASER->x, SM_LASER->y, Stream);
         cli->update();
         Thread::Sleep(20);
     }

@@ -46,7 +46,7 @@ public:
 
 private:
 	array<unsigned char>^ SendData;
-	SM_Laser^ SM_Laser_;
+	SM_Laser^ SM_LASER;
 	cliInterface^ cli;
 };
 

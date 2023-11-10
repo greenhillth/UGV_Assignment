@@ -2,16 +2,12 @@
 
 constexpr int steeringScalar{-40};
 
-Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY) : SM_VC_{SM_VC_}
+Controller::Controller(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM_VC, SM_Display^ SM_DISPLAY)
+	: UGVModule(SM_TM), SM_VC(SM_VC), SM_DISPLAY(SM_DISPLAY), input(false)
 {
-	SM_TM_ = SM_TM;
-	SM_DISPLAY_ = SM_DISPLAY;
-	Watch = nullptr;
-
 	connectedController = new ControllerInterface(1, 0);
 	currentState = connectedController->GetState();
-	input = false;
-	SM_DISPLAY_->Controller = connectedController;
+	SM_DISPLAY->Controller = connectedController;
 }
 
 Controller::~Controller()
@@ -21,44 +17,44 @@ Controller::~Controller()
 
 void Controller::updateVC(bool controlling) {
 	if (!controlling) {
-		SM_VC_->Speed = 0;
-		SM_VC_->Steering = 0;
+		SM_VC->Speed = 0;
+		SM_VC->Steering = 0;
 	}
 	else {
-		SM_VC_->Speed = currentState.rightTrigger - currentState.leftTrigger;
-		SM_VC_->Steering = currentState.rightThumbX*steeringScalar;
+		SM_VC->Speed = currentState.rightTrigger - currentState.leftTrigger;
+		SM_VC->Steering = currentState.rightThumbX*steeringScalar;
 	}
 }
 
 error_state Controller::processSharedMemory()
 {
 	bool connected = connectedController->IsConnected();
-	Monitor::Enter(SM_DISPLAY_->lockObject);
+	Monitor::Enter(SM_DISPLAY->lockObject);
 	if (connected) {
-		SM_DISPLAY_->connectionStatus[3] = true;
+		SM_DISPLAY->connectionStatus[3] = true;
 		currentState = connectedController->GetState();
-		SM_DISPLAY_->Controller = connectedController;
+		SM_DISPLAY->Controller = connectedController;
 	}
 	else { 
-		SM_DISPLAY_->connectionStatus[3] = false;
+		SM_DISPLAY->connectionStatus[3] = false;
 	}
-	Monitor::Exit(SM_DISPLAY_->lockObject);
+	Monitor::Exit(SM_DISPLAY->lockObject);
 
-	Monitor::Enter(SM_VC_->lockObject);
+	Monitor::Enter(SM_VC->lockObject);
 	updateVC(connected);
-	Monitor::Exit(SM_VC_->lockObject);
+	Monitor::Exit(SM_VC->lockObject);
 
 	return SUCCESS;
 }
 
-bool Controller::getShutdownFlag() { return SM_TM_->shutdown & bit_CONTROLLER; }
+bool Controller::getShutdownFlag() { return SM_TM->shutdown & bit_CONTROLLER; }
 
 
 error_state Controller::processHeartbeats()
 {
-	if ((SM_TM_->heartbeat & bit_CONTROLLER) == 0)
+	if ((SM_TM->heartbeat & bit_CONTROLLER) == 0)
 	{
-		SM_TM_->heartbeat |= bit_CONTROLLER;	// put laser flag up
+		SM_TM->heartbeat |= bit_CONTROLLER;	// put laser flag up
 		Watch->Restart();						// Restart stopwatch
 	}
 	else
@@ -73,17 +69,20 @@ error_state Controller::processHeartbeats()
 }
 
 void Controller::shutdownThreads()
-{}
+{
+	SM_TM->shutdown = 0xFF;
+}
 
 void Controller::threadFunction()
 {
 	Console::WriteLine("Controller thread is starting");
 	Watch = gcnew Stopwatch;
-	SM_TM_->ThreadBarrier->SignalAndWait();
+	SM_TM->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
 		processHeartbeats();
 		processSharedMemory();
+		if (currentState.buttonA) { shutdownThreads(); }
 		Thread::Sleep(20);
 	}
 	Console::WriteLine("Controller thread is terminating");

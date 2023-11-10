@@ -34,20 +34,12 @@ unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer
 }
 
 
-GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GNSS, SM_Display^ SM_DISPLAY)
+GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GPS, SM_Display^ SM_DISPLAY)
+	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), GNSS_PORT), SM_GPS(SM_GPS)
 {
-	SM_GNSS_ = SM_GNSS;
-	SM_TM_ = SM_TM;
-	SM_DISPLAY_ = SM_DISPLAY;
-	Watch = nullptr;
-
 	Client = nullptr;
 	Stream = nullptr;
-	TcpPort = GNSS_PORT;
-	DNS = gcnew String(WEEDER_ADDRESS);
-
 	GNSSData = gcnew array<unsigned char>(108);
-
 }
 
 error_state GNSS::setupSharedMemory()
@@ -58,9 +50,9 @@ error_state GNSS::setupSharedMemory()
 
 error_state GNSS::processHeartbeats()
 {
-	if ((SM_TM_->heartbeat & bit_GNSS) == 0)
+	if ((SM_TM->heartbeat & bit_GNSS) == 0)
 	{
-		SM_TM_->heartbeat |= bit_GNSS;	// put gnss flag up
+		SM_TM->heartbeat |= bit_GNSS;	// put gnss flag up
 		Watch->Restart();					// Restart stopwatch
 	}
 	else
@@ -77,7 +69,7 @@ void GNSS::shutdownThreads()
 {
 }
 
-bool GNSS::getShutdownFlag() { return SM_TM_->shutdown & bit_GNSS; }
+bool GNSS::getShutdownFlag() { return SM_TM->shutdown & bit_GNSS; }
 
 error_state GNSS::communicate()
 {
@@ -113,17 +105,17 @@ error_state GNSS::processSharedMemory()
 	double Easting = BitConverter::ToDouble(GNSSData, 48);
 	double Height = BitConverter::ToDouble(GNSSData, 56);
 
-	Monitor::Enter(SM_GNSS_->lockObject);
-	SM_GNSS_->Northing = Northing;
-	SM_GNSS_->Easting = Easting;
-	SM_GNSS_->Height = Height;
-	Monitor::Exit(SM_GNSS_->lockObject);
+	Monitor::Enter(SM_GPS->lockObject);
+	SM_GPS->Northing = Northing;
+	SM_GPS->Easting = Easting;
+	SM_GPS->Height = Height;
+	Monitor::Exit(SM_GPS->lockObject);
 	CRC = BitConverter::ToUInt32(GNSSData, 104);
 	for (int i = 0; i < 108; i++) { GNSSData[i] = 0; }
 
-	SM_DISPLAY_->GPSData[0] = Northing;
-	SM_DISPLAY_->GPSData[1] = Easting;
-	SM_DISPLAY_->GPSData[2] = Height;
+	SM_DISPLAY->GPSData[0] = Northing;
+	SM_DISPLAY->GPSData[1] = Easting;
+	SM_DISPLAY->GPSData[2] = Height;
 	return SUCCESS;
 };
 
@@ -147,13 +139,13 @@ void GNSS::threadFunction()
 {
 	Console::WriteLine("GNSS thread is starting");
 	Watch = gcnew Stopwatch;
-	connect(DNS, TcpPort);
-	SM_TM_->ThreadBarrier->SignalAndWait();
+	connect(DNS, PORT);
+	SM_TM->ThreadBarrier->SignalAndWait();
 	Watch->Start();
 	while (!getShutdownFlag()) {
 		
 		processHeartbeats();
-		SM_DISPLAY_->connectionStatus[2] = Client->Connected;
+		SM_DISPLAY->connectionStatus[2] = Client->Connected;
 		if (communicate() == SUCCESS && checkData() == SUCCESS)
 		{
 			processSharedMemory();

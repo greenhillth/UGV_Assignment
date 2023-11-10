@@ -2,19 +2,11 @@
 
 #define VC_PORT  25000
 
-VehicleControl::VehicleControl(SM_ThreadManagement^ SM_TM, SM_VC^ SM_VC_, SM_Display^ SM_DISPLAY)
+VehicleControl::VehicleControl(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM_VC, SM_Display^ SM_DISPLAY)
+    : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), VC_PORT), SM_VC(SM_VC)
 {
-    SM_VehicleControl = SM_VC_;
-    SM_TM_ = SM_TM;
-    SM_DISPLAY_ = SM_DISPLAY;
-
-    Watch = gcnew Stopwatch;
-
     Client = nullptr;
     Stream = nullptr;
-
-    TcpPort = VC_PORT;
-    DNS = gcnew String(WEEDER_ADDRESS);
 
     ReadData = gcnew array<unsigned char>(2048);
     SendData = gcnew array<unsigned char>(128);
@@ -51,9 +43,9 @@ error_state VehicleControl::communicate()
     Stream->Write(SendData, 0, SendData->Length);
 
 
-    Monitor::Enter(SM_DISPLAY_->lockObject);
-    SM_DISPLAY_->sentCommand = command;
-    Monitor::Exit(SM_DISPLAY_->lockObject);
+    Monitor::Enter(SM_DISPLAY->lockObject);
+    SM_DISPLAY->sentCommand = command;
+    Monitor::Exit(SM_DISPLAY->lockObject);
 
 
     return SUCCESS;
@@ -69,26 +61,26 @@ void VehicleControl::commandStr(double steer, double speed) {
 error_state VehicleControl::processSharedMemory()
 {
     //extract data and format command string
-    Monitor::Enter(SM_VehicleControl->lockObject);
-    commandStr(SM_VehicleControl->Steering, SM_VehicleControl->Speed);
-    Monitor::Exit(SM_VehicleControl->lockObject);
+    Monitor::Enter(SM_VC->lockObject);
+    commandStr(SM_VC->Steering, SM_VC->Speed);
+    Monitor::Exit(SM_VC->lockObject);
 
-    Monitor::Enter(SM_DISPLAY_->lockObject);
-    SM_DISPLAY_->connectionStatus[4] = Client->Connected;
-    Monitor::Exit(SM_DISPLAY_->lockObject);
+    Monitor::Enter(SM_DISPLAY->lockObject);
+    SM_DISPLAY->connectionStatus[4] = Client->Connected;
+    Monitor::Exit(SM_DISPLAY->lockObject);
 
 
     return error_state();
 }
 
-bool VehicleControl::getShutdownFlag() { return SM_TM_->shutdown & bit_VC;}
+bool VehicleControl::getShutdownFlag() { return SM_TM->shutdown & bit_VC;}
 
 void VehicleControl::threadFunction()
 {
     Console::WriteLine("Vehicle control thread is starting");
     Watch = gcnew Stopwatch;
-    connect(DNS, TcpPort);
-    SM_TM_->ThreadBarrier->SignalAndWait();
+    connect(DNS, PORT);
+    SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (!getShutdownFlag()) {
         processHeartbeats();
@@ -96,14 +88,15 @@ void VehicleControl::threadFunction()
         communicate();
         Thread::Sleep(100);
     }
+    shutdownThreads();
     Console::WriteLine("Vehicle control thread is terminating");
 }
 
 error_state VehicleControl::processHeartbeats()
 {
-    if ((SM_TM_->heartbeat & bit_VC) == 0)
+    if ((SM_TM->heartbeat & bit_VC) == 0)
     {
-        SM_TM_->heartbeat |= bit_VC;	// put VC flag up
+        SM_TM->heartbeat |= bit_VC;	// put VC flag up
         Watch->Restart();					// Restart stopwatch
     }
     else
@@ -119,4 +112,7 @@ error_state VehicleControl::processHeartbeats()
 
 void VehicleControl::shutdownThreads()
 {
+    commandStr(0, 0);
+    communicate();
+    Client->Close();
 }

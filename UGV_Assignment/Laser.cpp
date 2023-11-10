@@ -3,18 +3,11 @@
 #define LASER_PORT  23000
 
 //TODO - Add simulator address constructor functionality
-Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser, SM_Display^ SM_DISPLAY)
+Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
+	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), LASER_PORT), SM_LASER(SM_LASER)
 {
-	SM_Laser_ = SM_Laser;
-	SM_TM_ = SM_TM;
-	SM_DISPLAY_ = SM_DISPLAY;
-	Watch = nullptr;
-
 	Client = nullptr;
 	Stream = nullptr;
-
-	TcpPort = LASER_PORT;
-	DNS = gcnew String(WEEDER_ADDRESS);
 
 	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
@@ -34,30 +27,30 @@ error_state Laser::processSharedMemory()
 	Frags = Resp->Split(' ');
 
 	numPoints = Convert::ToInt32(Frags[25], 16);
-	Monitor::Enter(SM_Laser_->lockObject);
+	Monitor::Enter(SM_LASER->lockObject);
 	for (int i = 0; i < numPoints; i++)
 	{
-		SM_Laser_->x[i] = Convert::ToInt32(Frags[26 + i], 16) * Math::Sin(i * 0.5 * Math::PI / 180);
-		SM_Laser_->y[i] = -1*Convert::ToInt32(Frags[26 + i], 16) * Math::Cos(i * 0.5 * Math::PI / 180);
+		SM_LASER->x[i] = Convert::ToInt32(Frags[26 + i], 16) * Math::Sin(i * 0.5 * Math::PI / 180);
+		SM_LASER->y[i] = -1*Convert::ToInt32(Frags[26 + i], 16) * Math::Cos(i * 0.5 * Math::PI / 180);
 	}
-	Monitor::Exit(SM_Laser_->lockObject);
+	Monitor::Exit(SM_LASER->lockObject);
 	if (Frags->Length == 400)
 	{
-		SM_Laser_->valid = true;
+		SM_LASER->valid = true;
 		return error_state::SUCCESS;
 	}
 	else
 	{
-		SM_Laser_->valid = false;
+		SM_LASER->valid = false;
 		return error_state::ERR_INVALID_DATA;
 	}
 }
 
 error_state Laser::processHeartbeats()
 {
-	if ((SM_TM_->heartbeat & bit_LASER) == 0)
+	if ((SM_TM->heartbeat & bit_LASER) == 0)
 	{
-		SM_TM_->heartbeat |= bit_LASER;	// put laser flag up
+		SM_TM->heartbeat |= bit_LASER;	// put laser flag up
 		Watch->Restart();					// Restart stopwatch
 	}
 	else
@@ -77,7 +70,7 @@ void Laser::shutdownThreads()
 	Console::WriteLine("Laser thread is terminating");
 }
 
-bool Laser::getShutdownFlag() { return SM_TM_->shutdown & bit_LASER; }
+bool Laser::getShutdownFlag() { return SM_TM->shutdown & bit_LASER; }
 
 
 // Networking Functions
@@ -151,15 +144,15 @@ void Laser::threadFunction()
 	Watch = gcnew Stopwatch;
 	connect(WEEDER_ADDRESS, LASER_PORT);
 
-	SM_TM_->ThreadBarrier->SignalAndWait();
+	SM_TM->ThreadBarrier->SignalAndWait();
 	Watch->Start(); 
 	while (!getShutdownFlag()) {
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();
-		SM_DISPLAY_->connectionStatus[0] = Client->Connected;
+		SM_DISPLAY->connectionStatus[0] = Client->Connected;
 
-		if (SM_Laser_->valid) {}
+		if (SM_LASER->valid) {}
 
 		//if (communicate() == SUCCESS && checkData() == SUCCESS)		// Communicate and validate
 		//{

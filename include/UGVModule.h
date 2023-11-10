@@ -31,6 +31,8 @@ enum error_state {
 ref class UGVModule abstract
 {
 	public:
+		UGVModule() {}
+		UGVModule(SM_ThreadManagement^ SM_TM) : SM_TM(SM_TM) { Watch = gcnew Stopwatch; }
 		/**
 		 * Send/Recieve data from shared memory structures
 		 *
@@ -74,6 +76,6 @@ ref class UGVModule abstract
 		}
 
 	protected:
-		SM_ThreadManagement^ SM_TM_;
+		SM_ThreadManagement^ SM_TM;
 		Stopwatch^ Watch;
 };

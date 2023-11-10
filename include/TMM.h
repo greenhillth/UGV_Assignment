@@ -27,6 +27,7 @@ ref struct ThreadProperties
 
 ref class ThreadManagement : public UGVModule {
 public:
+    ThreadManagement();
     // Create shared memory objects
     error_state setupSharedMemory();
 
@@ -44,10 +45,10 @@ public:
     error_state processHeartbeats();
 
 private:
-     SM_Laser^ SM_Laser_;
-     SM_GNSS^ SM_GNSS_;
-     SM_VC^ SM_VC_;
-     SM_Display^ SM_DISPLAY_;
+     SM_Laser^ SM_LASER;
+     SM_GNSS^ SM_GPS;
+     SM_VehicleControl^ SM_VC;
+     SM_Display^ SM_DISPLAY;
 
     array<Thread^>^ ThreadList;
     array<ThreadProperties^>^ ThreadPropertiesList;

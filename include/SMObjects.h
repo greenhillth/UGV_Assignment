@@ -77,15 +77,13 @@ public:
     double Northing;
     double Easting;
     double Height;
-    unsigned long CRC;
-
 
     SM_GNSS() {
         lockObject = gcnew Object();
     }
 };
 
-ref class SM_VC
+ref class SM_VehicleControl
 {
 public:
     Object^ lockObject;
@@ -94,10 +92,9 @@ public:
 
     String^ formattedCMD;
 
-    SM_VC() {
+    SM_VehicleControl() {
         lockObject = gcnew Object();
     }
-    ~SM_VC() {}
 };
 
 ref class SM_Display
@@ -110,6 +107,7 @@ public:
     String^ sentCommand;
     array <double>^ GPSData;
     Stopwatch^ uptime;
+
     SM_Display() {
         lockObject = gcnew Object();
         threadStatus = gcnew array<Threading::ThreadState>(6);

@@ -72,17 +72,14 @@ void VehicleControl::commandStr(double steer, double speed) {
 
 error_state VehicleControl::processSharedMemory()
 {
-    //extract data and format command string
-    Monitor::Enter(SM_VC->lockObject);
     commandStr(SM_VC->Steering, SM_VC->Speed);
-    Monitor::Exit(SM_VC->lockObject);
 
     Monitor::Enter(SM_DISPLAY->lockObject);
     SM_DISPLAY->connectionStatus[4] = Client->Connected;
     Monitor::Exit(SM_DISPLAY->lockObject);
 
 
-    return error_state();
+    return SUCCESS;
 }
 
 bool VehicleControl::getShutdownFlag() { return SM_TM->shutdown & bit_VC;}
@@ -111,26 +108,21 @@ void VehicleControl::threadFunction()
     
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
-    while (!getShutdownFlag()) {
+    while (connection == ERR_CONNECTION) {
         processHeartbeats();
-
-        if (connection == SUCCESS) {
-            processSharedMemory();
-            communicate();
-        }
-        else if (connection == CONNECTION_TIMEOUT) {
-            Console::WriteLine("Connection attempt failed after {0} attempts, terminating thread", connectionAttempts);
-            break;
-        }
-        else {
-            connection = connectionReattempt();
-        }
+        connection = connectionReattempt();
+        Thread::Sleep(500);
+    }
+    if (connection == CONNECTION_TIMEOUT) {
+        Console::WriteLine("Connection attempt failed after {0} attempts, terminating thread", connectionAttempts);
+    }
+    while (!getShutdownFlag() && connection == SUCCESS) {
+        processHeartbeats();
+        processSharedMemory();
+        communicate();
         Thread::Sleep(100);
     }
 
-    commandStr(0, 0);
-    communicate();
-    Client->Close();
     Console::WriteLine("Vehicle control thread is terminating");
 }
 

@@ -45,8 +45,8 @@ error_state GNSS::processHeartbeats()
 {
     if ((SM_TM->heartbeat & bit_GNSS) == 0)
     {
-        SM_TM->heartbeat |= bit_GNSS;	// put gnss flag up
-        Watch->Restart();					// Restart stopwatch
+        SM_TM->heartbeat |= bit_GNSS;
+        Watch->Restart();
     }
     else
     {
@@ -82,9 +82,7 @@ error_state GNSS::communicate()
 error_state GNSS::checkData()
 {
     pin_ptr<unsigned char> charPtr = &GNSSData[0];
-    unsigned long calculation(CalculateBlockCRC32(108, charPtr));
-    unsigned int CRC(BitConverter::ToUInt32(GNSSData, 108));
-    if ( CRC == calculation )
+    if (CalculateBlockCRC32(108, charPtr) == BitConverter::ToUInt32(GNSSData, 108))
     {
         return SUCCESS;
     }

@@ -19,7 +19,15 @@ VehicleControl::VehicleControl(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM
 
 error_state VehicleControl::connect(String^ hostName, int portNumber)
 {
-    Client = gcnew TcpClient(hostName, portNumber);
+    try
+    {
+        Client = gcnew TcpClient(hostName, portNumber);
+    }
+    catch (System::Net::Sockets::SocketException^ e)
+    {
+        timeout->Start();
+        return ERR_CONNECTION;
+    }
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -29,16 +37,20 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
 
     Stream->Write(SendData, 0, SendData->Length);
 
+    Threading::Thread::Sleep(20);
+    if (!Stream->DataAvailable) { return ERR_NO_DATA; }
+    Stream->Read(ReadData, 0, ReadData->Length);
     String^ response = Encoding::ASCII->GetString(ReadData);
 
     if (response->Contains("OK\n")) {
         return SUCCESS;
     }
-    return ERR_CONNECTION;
+    return ERR_VALIDATION;
 }
 
 error_state VehicleControl::communicate()
 {
+
     SendData = Encoding::ASCII->GetBytes(command);
     Stream->Write(SendData, 0, SendData->Length);
 
@@ -75,20 +87,50 @@ error_state VehicleControl::processSharedMemory()
 
 bool VehicleControl::getShutdownFlag() { return SM_TM->shutdown & bit_VC;}
 
+//Reattempt connection 5 times in intervals of 10s before timeout
+error_state VehicleControl::connectionReattempt() {
+
+    if (connectionAttempts >= 5) {
+        return CONNECTION_TIMEOUT;
+    }
+     else if (timeout->Elapsed.Seconds > 10) {
+        
+        timeout->Reset();
+        connectionAttempts++;
+        return connect(DNS, PORT);
+    }
+
+    return ERR_CONNECTION;
+}
+
 void VehicleControl::threadFunction()
 {
     Console::WriteLine("Vehicle control thread is starting");
     Watch = gcnew Stopwatch;
-    connect(DNS, PORT);
+    auto connection = connect(DNS, PORT);               //TODO - Finish Exception Handling for inactive connection
+    
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (!getShutdownFlag()) {
         processHeartbeats();
-        processSharedMemory();
-        communicate();
+
+        if (connection == SUCCESS) {
+            processSharedMemory();
+            communicate();
+        }
+        else if (connection == CONNECTION_TIMEOUT) {
+            Console::WriteLine("Connection attempt failed after {0} attempts, terminating thread", connectionAttempts);
+            break;
+        }
+        else {
+            connection = connectionReattempt();
+        }
         Thread::Sleep(100);
     }
-    shutdownThreads();
+
+    commandStr(0, 0);
+    communicate();
+    Client->Close();
     Console::WriteLine("Vehicle control thread is terminating");
 }
 
@@ -110,9 +152,5 @@ error_state VehicleControl::processHeartbeats()
     return SUCCESS;
 }
 
-void VehicleControl::shutdownThreads()
-{
-    commandStr(0, 0);
-    communicate();
-    Client->Close();
-}
+void VehicleControl::shutdownThreads() { SM_TM->shutdown = 0xFF; }
+

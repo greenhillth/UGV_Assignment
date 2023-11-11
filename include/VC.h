@@ -9,6 +9,7 @@ public:
 	VehicleControl(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM_VC, SM_Display^ SM_DISPLAY);
 
 	error_state connect(String^ hostName, int portNumber) override;
+	error_state connectionReattempt();
 	error_state communicate() override;
 	error_state processSharedMemory() override;
 	bool getShutdownFlag() override;

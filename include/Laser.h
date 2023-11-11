@@ -7,7 +7,6 @@ ref class Laser : public NetworkedModule
 {
 public:
 	Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_Laser, SM_Display^ SM_DISPLAY);
-	error_state setupSharedMemory();
 	void threadFunction() override;
 	error_state processHeartbeats();
 	void shutdownThreads();

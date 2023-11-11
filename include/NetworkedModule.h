@@ -22,7 +22,8 @@ ref class NetworkedModule abstract : public UGVModule
 {
 	public:
 		NetworkedModule(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY, String^ DNS, int PORT)
-			: UGVModule(SM_TM), SM_DISPLAY(SM_DISPLAY), DNS(DNS), PORT(PORT)  {}
+			: UGVModule(SM_TM), SM_DISPLAY(SM_DISPLAY), DNS(DNS), PORT(PORT), Client(gcnew TcpClient),
+			Stream(nullptr), timeout(gcnew Stopwatch), connectionAttempts(0)  {}
 		virtual error_state connect(String^ hostName, int portNumber) = 0;	// Establish TCP connection
 		virtual error_state communicate() = 0;								// Communicate over TCP connection (includes any error checking required on data)
 
@@ -36,4 +37,6 @@ ref class NetworkedModule abstract : public UGVModule
 		String^ DNS;
 
 		SM_Display^ SM_DISPLAY;
+		Stopwatch^ timeout;
+		int connectionAttempts;
 };

@@ -4,11 +4,9 @@
 #include "TMM.h"
 
 int main(void) {
-	std::cout << "henlo" << std::endl;
-	ThreadManagement^ myTMT = gcnew ThreadManagement();
+	ThreadManagement^ UGV = gcnew ThreadManagement();
 
-	myTMT->setupSharedMemory();
-	myTMT->threadFunction();
+	UGV->run();
 
 
 	return 0;

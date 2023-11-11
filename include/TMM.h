@@ -28,8 +28,6 @@ ref struct ThreadProperties
 ref class ThreadManagement : public UGVModule {
 public:
     ThreadManagement();
-    // Create shared memory objects
-    error_state setupSharedMemory();
 
     // Send/Recieve data from shared memory structures
     error_state processSharedMemory() override;
@@ -41,6 +39,8 @@ public:
 
     // Thread function for TMM
     void threadFunction() override;
+
+    void run();
 
     error_state processHeartbeats();
 

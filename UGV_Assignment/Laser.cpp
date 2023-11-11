@@ -6,16 +6,8 @@
 Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
 	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), LASER_PORT), SM_LASER(SM_LASER)
 {
-	Client = nullptr;
-	Stream = nullptr;
-
 	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
-}
-
-error_state Laser::setupSharedMemory()
-{
-	return SUCCESS;
 }
 
 error_state Laser::processSharedMemory()
@@ -64,11 +56,8 @@ error_state Laser::processHeartbeats()
 	return SUCCESS;
 }
 
-void Laser::shutdownThreads()
-{
-	Client->Close();
-	Console::WriteLine("Laser thread is terminating");
-}
+void Laser::shutdownThreads() { SM_TM->shutdown = 0xFF; }
+
 
 bool Laser::getShutdownFlag() { return SM_TM->shutdown & bit_LASER; }
 
@@ -160,5 +149,7 @@ void Laser::threadFunction()
 		//}
 		Thread::Sleep(20);
 	}
-	shutdownThreads();
+	
+	Client->Close();
+	Console::WriteLine("Laser thread is terminating");
 }

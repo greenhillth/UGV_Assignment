@@ -6,8 +6,6 @@
 Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
     : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(DISPLAY_ADDRESS), DISPLAY_PORT), SM_LASER(SM_LASER)
 {
-    Client = gcnew TcpClient();
-    Stream = nullptr;
     cli = gcnew cliInterface(SM_TM, SM_DISPLAY);
 }
 

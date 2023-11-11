@@ -12,30 +12,25 @@ ThreadManagement::ThreadManagement()
 	SM_DISPLAY = gcnew SM_Display;
 }
 
-error_state ThreadManagement::setupSharedMemory()
-{
-	return SUCCESS;
-}
+void ThreadManagement::run() { threadFunction(); }
 
 error_state ThreadManagement::processSharedMemory()
 {
+	Monitor::Enter(SM_DISPLAY->lockObject);
 	for (int i=1; i < ThreadList->Length; i++) {
 		SM_DISPLAY->threadStatus[i] = ThreadList[i]->ThreadState;
 	}
 
 	SM_DISPLAY->sentCommand = SM_VC->formattedCMD;
-
 	SM_DISPLAY->GPSData[0] = SM_GPS->Northing;
 	SM_DISPLAY->GPSData[1] = SM_GPS->Easting;
 	SM_DISPLAY->GPSData[2] = SM_GPS->Height;
 
+	Monitor::Exit(SM_DISPLAY->lockObject);
 	return SUCCESS;
 }
 
-void ThreadManagement::shutdownModules()
-{
-	SM_TM->shutdown = 0xFF;
-}
+void ThreadManagement::shutdownModules() { SM_TM->shutdown = 0xFF; }
 
 bool ThreadManagement::getShutdownFlag() { return SM_TM->shutdown & bit_PM; }
 

@@ -24,8 +24,9 @@ enum error_state {
 	ERR_CONNECTION,
 	ERR_CRITICAL_THREAD_FAILURE,
 	ERR_TMS_TIMEOUT,
-	ERR_NO_DATA_RECEIVED
-	// Define your own additional error types as needed
+	ERR_VALIDATION,
+	ERR_NO_DATA_RECEIVED,
+	CONNECTION_TIMEOUT
 };
 
 ref class UGVModule abstract

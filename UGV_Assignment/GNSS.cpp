@@ -37,14 +37,7 @@ unsigned long CalculateBlockCRC32(unsigned long ulCount, unsigned char* ucBuffer
 GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GPS, SM_Display^ SM_DISPLAY)
 	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), GNSS_PORT), SM_GPS(SM_GPS)
 {
-	Client = nullptr;
-	Stream = nullptr;
 	GNSSData = gcnew array<unsigned char>(108);
-}
-
-error_state GNSS::setupSharedMemory()
-{
-	return SUCCESS;
 }
 
 
@@ -65,9 +58,7 @@ error_state GNSS::processHeartbeats()
 	return SUCCESS;
 }
 
-void GNSS::shutdownThreads()
-{
-}
+void GNSS::shutdownThreads() { SM_TM->shutdown = 0xFF; }
 
 bool GNSS::getShutdownFlag() { return SM_TM->shutdown & bit_GNSS; }
 

@@ -26,7 +26,15 @@ void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, Networ
 
 error_state Display::connect(String^ hostName, int portNumber)
 {
-    Client = gcnew TcpClient(hostName, portNumber);
+    try
+    {
+        Client = gcnew TcpClient(hostName, portNumber);
+    }
+    catch (System::Net::Sockets::SocketException^ e)
+    {
+        timeout->Start();
+        return ERR_CONNECTION;
+    }
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -41,9 +49,23 @@ error_state Display::connect(String^ hostName, int portNumber)
     return SUCCESS;
 }
 
+error_state Display::connectionReattempt() {
+    if (connectionAttempts >= 5) {
+        return CONNECTION_TIMEOUT;
+    }
+    else if (timeout->Elapsed.Seconds > 10) {
+        timeout->Reset();
+        connectionAttempts++;
+        return connect(DNS, PORT);
+    }
+    return ERR_CONNECTION;
+}
+
 error_state Display::communicate()
 {
-    return error_state();
+    sendDisplayData(SM_LASER->x, SM_LASER->y, Stream);
+
+    return SUCCESS;
 }
 
 error_state Display::processSharedMemory()
@@ -79,15 +101,15 @@ bool Display::getShutdownFlag() { return SM_TM->shutdown & bit_DISPLAY; }
 void Display::threadFunction()
 {
     Console::WriteLine("Display thread is starting");
-    Watch = gcnew Stopwatch;
-    //connect(DNS, PORT);
+    Watch = gcnew Stopwatch;    //TODO - init stopwatches in constructor
     cli->init();
+    
+    auto connection = connect(DNS, PORT);
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (!getShutdownFlag()) {
-        //Console::WriteLine("Display thread is running");
         processHeartbeats();
-        //sendDisplayData(SM_LASER->x, SM_LASER->y, Stream);
+        if (connection == SUCCESS) { communicate(); };
         cli->update();
         Thread::Sleep(20);
     }

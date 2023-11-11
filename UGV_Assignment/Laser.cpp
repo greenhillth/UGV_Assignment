@@ -8,6 +8,7 @@ Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISP
 {
 	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
+	SendData = Encoding::ASCII->GetBytes("5309693\n");
 }
 
 error_state Laser::processSharedMemory()
@@ -66,9 +67,16 @@ bool Laser::getShutdownFlag() { return SM_TM->shutdown & bit_LASER; }
 
 error_state Laser::connect(String^ hostName, int portNumber)
 {
-	String^ AuthString = gcnew String("5309693\n");
-	
-	Client = gcnew TcpClient(hostName, portNumber);
+	try
+	{
+		Client = gcnew TcpClient(hostName, portNumber);
+	}
+	catch (System::Net::Sockets::SocketException^ e)
+	{
+		timeout->Start();
+		return ERR_CONNECTION;
+	}
+
 	Stream = Client->GetStream();
 
 	Client->NoDelay = true;
@@ -76,8 +84,6 @@ error_state Laser::connect(String^ hostName, int portNumber)
 	Client->SendTimeout = 500;
 	Client->ReceiveBufferSize = 2048;
 	Client->SendBufferSize = 128;
-
-	SendData = Encoding::ASCII->GetBytes(AuthString);
 	
 	communicate();
 
@@ -86,7 +92,7 @@ error_state Laser::connect(String^ hostName, int portNumber)
 	if (response->Contains("OK\n")) {
 		return SUCCESS;
 	}
-	return ERR_CONNECTION;
+	return ERR_VALIDATION;
 }
 
 //TODO - Implement communication
@@ -106,12 +112,10 @@ error_state Laser::communicate()
 	for (int i = 0; !Stream->DataAvailable && (i < 5); i++) {
 		System::Threading::Thread::Sleep(10);
 	}
-	
-	if (Stream->DataAvailable) {
-		Stream->Read(ReadData, 0, ReadData->Length);
-		return SUCCESS;
-	}
-	return ERR_NO_DATA_RECEIVED;
+	if (!Stream->DataAvailable) { return ERR_NO_DATA; }
+
+	Stream->Read(ReadData, 0, ReadData->Length);
+	return SUCCESS;
 }
 
 error_state Laser::sendCommand(String^ command)
@@ -126,16 +130,40 @@ error_state Laser::sendCommand(String^ command)
 	return SUCCESS;
 }
 
+error_state Laser::connectionReattempt() {
+
+	if (connectionAttempts >= 5) {
+		return CONNECTION_TIMEOUT;
+	}
+	else if (timeout->Elapsed.Seconds > 10) {
+		timeout->Reset();
+		connectionAttempts++;
+		return connect(DNS, PORT);
+	}
+	return ERR_CONNECTION;
+}
+
 //THREAD FUNCTION
 void Laser::threadFunction()
 {
 	Console::WriteLine("Laser thread is starting");
 	Watch = gcnew Stopwatch;
-	connect(WEEDER_ADDRESS, LASER_PORT);
+	auto connection = connect(DNS, PORT);
 
 	SM_TM->ThreadBarrier->SignalAndWait();
 	Watch->Start(); 
-	while (!getShutdownFlag()) {
+
+	while (connection == ERR_CONNECTION) {
+		processHeartbeats();
+		connection = connectionReattempt();
+		Thread::Sleep(500);
+	}
+
+	if (connection == CONNECTION_TIMEOUT) {
+		Console::WriteLine("Connection attempt failed after {0} attempts, terminating laser thread", connectionAttempts);
+	}
+
+	while (!getShutdownFlag() && connection == SUCCESS) {
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();

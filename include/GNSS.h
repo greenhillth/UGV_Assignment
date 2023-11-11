@@ -18,6 +18,7 @@ public:
 	error_state checkData();
 	error_state processSharedMemory() override;
 	error_state connect(String^ hostName, int portNumber) override;
+	error_state connectionReattempt();
 
 	~GNSS() {};
 private:

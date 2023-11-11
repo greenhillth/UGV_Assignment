@@ -37,7 +37,10 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
 
     Stream->Write(SendData, 0, SendData->Length);
 
-    Threading::Thread::Sleep(20);
+    for (int i = 0; !Stream->DataAvailable && (i < 5); i++) {
+        System::Threading::Thread::Sleep(10);
+    }
+    
     if (!Stream->DataAvailable) { return ERR_NO_DATA; }
     Stream->Read(ReadData, 0, ReadData->Length);
     String^ response = Encoding::ASCII->GetString(ReadData);
@@ -50,7 +53,6 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
 
 error_state VehicleControl::communicate()
 {
-
     SendData = Encoding::ASCII->GetBytes(command);
     Stream->Write(SendData, 0, SendData->Length);
 
@@ -91,12 +93,10 @@ error_state VehicleControl::connectionReattempt() {
         return CONNECTION_TIMEOUT;
     }
      else if (timeout->Elapsed.Seconds > 10) {
-        
         timeout->Reset();
         connectionAttempts++;
         return connect(DNS, PORT);
     }
-
     return ERR_CONNECTION;
 }
 
@@ -104,8 +104,8 @@ void VehicleControl::threadFunction()
 {
     Console::WriteLine("Vehicle control thread is starting");
     Watch = gcnew Stopwatch;
-    auto connection = connect(DNS, PORT);               //TODO - Finish Exception Handling for inactive connection
-    
+    auto connection = connect(DNS, PORT);               
+
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (connection == ERR_CONNECTION) {
@@ -113,9 +113,11 @@ void VehicleControl::threadFunction()
         connection = connectionReattempt();
         Thread::Sleep(500);
     }
+
     if (connection == CONNECTION_TIMEOUT) {
-        Console::WriteLine("Connection attempt failed after {0} attempts, terminating thread", connectionAttempts);
+        Console::WriteLine("Connection attempt failed after {0} attempts, terminating VC thread", connectionAttempts);
     }
+
     while (!getShutdownFlag() && connection == SUCCESS) {
         processHeartbeats();
         processSharedMemory();

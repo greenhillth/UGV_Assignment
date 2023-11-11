@@ -37,6 +37,7 @@ public:
 	Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY);
 	void sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream);
 	error_state connect(String^ hostName, int portNumber) override;
+	error_state connectionReattempt();
 	error_state communicate() override;
 	error_state processSharedMemory() override;
 	error_state processHeartbeats();

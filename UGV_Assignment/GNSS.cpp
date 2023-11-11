@@ -115,7 +115,15 @@ error_state GNSS::processSharedMemory()
 
 error_state GNSS::connect(String^ hostName, int portNumber)
 {
-	Client = gcnew TcpClient(hostName, portNumber);
+	try
+	{
+		Client = gcnew TcpClient(hostName, portNumber);
+	}
+	catch (System::Net::Sockets::SocketException^ e)
+	{
+		timeout->Start();
+		return ERR_CONNECTION;
+	}
 	Stream = Client->GetStream();
 
 	Client->NoDelay = true;
@@ -126,14 +134,38 @@ error_state GNSS::connect(String^ hostName, int portNumber)
 	return SUCCESS;
 }
 
+error_state GNSS::connectionReattempt()
+{
+	if (connectionAttempts >= 5) {
+		return CONNECTION_TIMEOUT;
+	}
+	else if (timeout->Elapsed.Seconds > 10) {
+		timeout->Reset();
+		connectionAttempts++;
+		return connect(DNS, PORT);
+	}
+	return ERR_CONNECTION;
+}
+
 void GNSS::threadFunction()
 {
 	Console::WriteLine("GNSS thread is starting");
 	Watch = gcnew Stopwatch;
-	connect(DNS, PORT);
+	auto connection = connect(DNS, PORT);
 	SM_TM->ThreadBarrier->SignalAndWait();
 	Watch->Start();
-	while (!getShutdownFlag()) {
+
+	while (connection == ERR_CONNECTION) {
+		processHeartbeats();
+		connection = connectionReattempt();
+		Thread::Sleep(500);
+	}
+
+	if (connection == CONNECTION_TIMEOUT) {
+		Console::WriteLine("Connection attempt failed after {0} attempts, terminating laser thread", connectionAttempts);
+	}
+
+	while (!getShutdownFlag() && connection == SUCCESS) {
 		
 		processHeartbeats();
 		SM_DISPLAY->connectionStatus[2] = Client->Connected;

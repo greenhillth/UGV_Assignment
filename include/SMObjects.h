@@ -35,7 +35,7 @@ constexpr uint8_t bit_VC =          0b00001000;
 constexpr uint8_t bit_CONTROLLER =  0b00010000;
 constexpr uint8_t bit_DISPLAY =     0b00100000;
 
-#define CRASH_LIMIT_MS    1000
+#define CRASH_LIMIT_MS    4000
 
 ref class SM_ThreadManagement
 {

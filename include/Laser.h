@@ -19,6 +19,8 @@ public:
 	
 	error_state sendCommand(String^ command);
 	
+	error_state connectionReattempt();
+
 	~Laser() {};
 private:
 	array<unsigned char>^ SendData;

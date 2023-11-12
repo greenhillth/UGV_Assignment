@@ -123,6 +123,7 @@ error_state GNSS::connect(String^ hostName, int portNumber)
         return ERR_CONNECTION;
     }
     SM_DISPLAY->connectionHandles[2] = Client;
+    SM_DISPLAY->connectionStatus[2]->Start();
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -167,7 +168,6 @@ void GNSS::threadFunction()
     while (!getShutdownFlag() && connection == SUCCESS) {
         
         processHeartbeats();
-        SM_DISPLAY->connectionStatus[2] = Client->Connected;
         if (communicate() == SUCCESS && checkData() == SUCCESS)
         {
             processSharedMemory();

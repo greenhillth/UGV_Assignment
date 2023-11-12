@@ -78,6 +78,7 @@ error_state Laser::connect(String^ hostName, int portNumber)
 	}
 
 	SM_DISPLAY->connectionHandles[0] = Client;
+	SM_DISPLAY->connectionStatus[0]->Start();
 	Stream = Client->GetStream();
 
 	Client->NoDelay = true;
@@ -168,7 +169,6 @@ void Laser::threadFunction()
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();
-		SM_DISPLAY->connectionStatus[0] = Client->Connected;
 
 		if (SM_LASER->valid) {}
 

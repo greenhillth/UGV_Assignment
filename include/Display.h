@@ -23,8 +23,11 @@ public:
 	cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData);
 	void init(window selectedWindow);
 	void update();
+	void changeWindow(window requested) { requestedWindow = requested; }
+	void forceRefresh();
 
 private:
+
 	void updateThreadStatus();
 	void updateGPS();
 	void updateCMD();
@@ -36,10 +39,12 @@ private:
 	void updateGPSLogs();
 
 	window activeWindow;
+	window requestedWindow;
 	SM_ThreadManagement^ ThreadInfo;
 	SM_Display^ displayData;
 	array<uint8_t, 3>^ elemPositions;
-	array<Stopwatch^>^ connectionStatus;
+	bool reinitialise;
+
 };
 
 ref class Display : public NetworkedModule
@@ -55,11 +60,13 @@ public:
 	void shutdownThreads();
 	bool getShutdownFlag() override;
 	void threadFunction() override;
+	void processKey();
 
 private:
 	array<unsigned char>^ SendData;
 	SM_Display^ SM_DISPLAY;
 	cliInterface^ cli;
+	ConsoleKey pressedKey;
 };
 
 String^ getRemoteIPAddress(Socket^ s);

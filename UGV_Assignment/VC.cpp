@@ -30,6 +30,7 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
         return ERR_CONNECTION;
     }
     SM_DISPLAY->connectionHandles[3] = Client;
+    SM_DISPLAY->connectionStatus[4]->Start();
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -77,11 +78,6 @@ void VehicleControl::commandStr(double steer, double speed) {
 error_state VehicleControl::processSharedMemory()
 {
     commandStr(SM_VC->Steering, SM_VC->Speed);
-
-    Monitor::Enter(SM_DISPLAY->lockObject);
-    SM_DISPLAY->connectionStatus[4] = Client->Connected;
-    Monitor::Exit(SM_DISPLAY->lockObject);
-
 
     return SUCCESS;
 }

@@ -104,7 +104,7 @@ ref class SM_Display
 public:
     Object^ lockObject;
     array<Threading::ThreadState>^ threadStatus;
-    array<bool>^ connectionStatus;
+    array<Stopwatch^>^ connectionStatus;
     array<TcpClient^>^ connectionHandles;
     ControllerInterface* Controller;
     String^ sentCommand;
@@ -115,7 +115,8 @@ public:
     SM_Display(SM_GNSS^ SM_GPS, SM_Laser^ SM_LASER) : GPSData(SM_GPS), LaserData(SM_LASER) {
         lockObject = gcnew Object();
         threadStatus = gcnew array<Threading::ThreadState>(6);
-        connectionStatus = gcnew array<bool>(5);
+        connectionStatus = gcnew array<Stopwatch^>(5) {
+            gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch};
         connectionHandles = gcnew array<TcpClient^>(4); // TODO - MERGE WITH CONNECTIONSTATUS
         uptime = gcnew Stopwatch;
         uptime->Start();

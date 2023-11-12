@@ -36,7 +36,7 @@ error_state Display::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
-    SM_DISPLAY->connectionStatus[1] = true;
+    SM_DISPLAY->connectionStatus[1]->Start();
     SM_DISPLAY->connectionHandles[1] = Client;
     Stream = Client->GetStream();
 
@@ -71,7 +71,7 @@ error_state Display::communicate()
 
 error_state Display::processSharedMemory()
 {
-    SM_DISPLAY->connectionStatus[2] = Client->Connected;
+    
     return SUCCESS;
 }
 
@@ -94,7 +94,9 @@ error_state Display::processHeartbeats()
 }
 
 void Display::shutdownThreads()
-{}
+{
+    SM_TM->shutdown = 0xFF;
+}
 
 bool Display::getShutdownFlag() { return SM_TM->shutdown & bit_DISPLAY; }
 
@@ -108,21 +110,38 @@ void Display::threadFunction()
     auto connection = connect(DNS, PORT);
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
-    bool refreshFlag = false;
     while (!getShutdownFlag()) {
         processHeartbeats();
-        if (Console::KeyAvailable) { refreshFlag = Console::ReadKey(true).Key == ConsoleKey::R; }
+        if (Console::KeyAvailable) { 
+            pressedKey = Console::ReadKey(true).Key;
+        }
         if (connection == SUCCESS) { communicate(); }
-        else if (refreshFlag) { connection = connectionReattempt(); }
         cli->update();
-        Thread::Sleep(20);
+        if (pressedKey != ConsoleKey::Clear) { processKey(); }
     }
     Console::WriteLine("Display thread is terminating");
 }
 
+void Display::processKey() {
+    switch (pressedKey) {
+    case ConsoleKey::M:
+        cli->changeWindow(MAIN);
+        break;
+    case ConsoleKey::N:
+        cli->changeWindow(NETWORK);
+        break;
+    case ConsoleKey::Q:
+        shutdownThreads();
+        break;
+    case ConsoleKey::R:
+        connectionReattempt();
+        break;
+    }
+    pressedKey = ConsoleKey::Clear;
+}
 
 cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData)
-    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK)
+    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK), reinitialise(false)
 {
     elemPositions = gcnew array<uint8_t, 3>(7, 6, 2) {
         { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
@@ -133,17 +152,12 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 28, 7 }, { 28, 9 }, { 28, 11 }, { 28, 13 }, { 28, 15 } },                                                                 //Network co-ords
         {}                                                                  //GPS Log co-ords
     };
-    connectionStatus = gcnew array<Stopwatch^>(5) { gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch
-    };
-
 }
 
 void cliInterface::init(window selectedWindow)
 {
     //TODO - set appropriate buffer and window sizes to make display more robust
     Console::CursorVisible = false;
-    Console::Write("Initialising display interface");
-    Thread::Sleep(50);
     Console::Clear();
 
     switch (selectedWindow) {
@@ -174,7 +188,7 @@ void cliInterface::init(window selectedWindow)
         "                       CRC:                    Coords:  x,y,z                        Uptime:                           \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
-        "(press Q to quit)");
+        "(press Q to quit, or N to switch to Networking Menu)");
     break;
     case NETWORK:
     Console::WriteLine(
@@ -203,7 +217,7 @@ void cliInterface::init(window selectedWindow)
         " Press R to reattempt connection                                                                                       \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
-        "(press Q to quit)");
+        "(press Q to quit, or M to switch to Main Menu)");
     break;
     
     case GPSLOGS:
@@ -240,6 +254,11 @@ void cliInterface::init(window selectedWindow)
 
 void cliInterface::update()
 {
+    if(activeWindow != requestedWindow) {
+        init(requestedWindow);
+        activeWindow = requestedWindow;
+        reinitialise = true;
+    }
     switch (activeWindow) {
     case MAIN:
         updateThreadStatus();
@@ -262,6 +281,11 @@ void cliInterface::updateUptime() {
     TimeSpan time = displayData->uptime->Elapsed;
     Console::SetCursorPosition(93, 22);
     Console::Write("{0:00}:{1:00}:{2:00}.{3:000}       ", time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+}
+
+void cliInterface::forceRefresh()
+{
+    reinitialise = true;
 }
 
 void cliInterface::updateThreadStatus()
@@ -323,7 +347,7 @@ void cliInterface::updateConnectionStatus()
     auto status = displayData->connectionStatus;
     for (int i = 0; i < status->Length; i++) {
         Console::SetCursorPosition(elemPositions[CONNECTION, i, 0], elemPositions[CONNECTION, i, 1]);
-        if (status[i]) { Console::ForegroundColor = green; Console::Write("Connected   "); }
+        if (status[i]->IsRunning) { Console::ForegroundColor = green; Console::Write("Connected   "); }
         else { Console::ForegroundColor = red; Console::Write("Disconnected"); }
     }
     Console::ResetColor();
@@ -334,12 +358,17 @@ void cliInterface::updateNetwork() {
 
     for (int i = 0; i < 4; i++) {
         Console::SetCursorPosition(elemPositions[5, i, 0], elemPositions[5, i, 1]);
-        if (connectionStatus[i]->IsRunning) {
+        if (displayData->connectionStatus[i]->IsRunning) {
+            if (reinitialise)
+            {
+                Console::ForegroundColor = ConsoleColor::Green;
+                Console::Write("Connected               {0}              {1}",
+                    getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
+            }
             Console::CursorLeft = 106;
-            Console::Write("{0:00}:{1:00}:{2:00}", connectionStatus[i]->Elapsed.Hours, connectionStatus[i]->Elapsed.Minutes, connectionStatus[i]->Elapsed.Seconds);
+            Console::Write("{0:00}:{1:00}:{2:00}", displayData->connectionStatus[i]->Elapsed.Hours, displayData->connectionStatus[i]->Elapsed.Minutes, displayData->connectionStatus[i]->Elapsed.Seconds);
         }
-        else if (handles[i]->Connected && !connectionStatus[i]->IsRunning) {
-            connectionStatus[i]->Start();
+        else if ((handles[i]->Connected)) {
             Console::ForegroundColor = ConsoleColor::Green;
             Console::Write("Connected               {0}              {1}",
                  getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
@@ -351,6 +380,7 @@ void cliInterface::updateNetwork() {
         }
         Console::ResetColor();
     }
+    reinitialise = false;
     // add controller data
 
         

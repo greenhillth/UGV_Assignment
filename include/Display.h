@@ -39,6 +39,7 @@ private:
 	SM_ThreadManagement^ ThreadInfo;
 	SM_Display^ displayData;
 	array<uint8_t, 3>^ elemPositions;
+	array<Stopwatch^>^ connectionStatus;
 };
 
 ref class Display : public NetworkedModule
@@ -61,3 +62,5 @@ private:
 	cliInterface^ cli;
 };
 
+String^ getRemoteIPAddress(Socket^ s);
+String^ getLocalIPAddress(Socket^ s);

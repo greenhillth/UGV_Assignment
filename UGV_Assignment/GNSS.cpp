@@ -38,6 +38,7 @@ GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GPS, SM_Display^ SM_DISPLAY)
     : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), GNSS_PORT), SM_GPS(SM_GPS)
 {
     GNSSData = gcnew array<unsigned char>(112) { 0xAA, 0x44, 0x12, 0x1C };
+    SM_DISPLAY->connectionHandles[2] = Client;
 }
 
 
@@ -121,6 +122,7 @@ error_state GNSS::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
+    SM_DISPLAY->connectionHandles[2] = Client;
     Stream = Client->GetStream();
 
     Client->NoDelay = true;

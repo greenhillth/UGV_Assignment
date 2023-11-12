@@ -7,6 +7,7 @@ Display::Display(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY) : SM_DISPLA
     NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(DISPLAY_ADDRESS), DISPLAY_PORT)
 {
     cli = gcnew cliInterface(SM_TM, SM_DISPLAY);
+    SM_DISPLAY->connectionHandles[1] = Client;
 }
 
 void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream) {
@@ -36,6 +37,7 @@ error_state Display::connect(String^ hostName, int portNumber)
         return ERR_CONNECTION;
     }
     SM_DISPLAY->connectionStatus[1] = true;
+    SM_DISPLAY->connectionHandles[1] = Client;
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -101,7 +103,7 @@ void Display::threadFunction()
 {
     Console::WriteLine("Display thread is starting");
     Watch = gcnew Stopwatch;    //TODO - init stopwatches in constructor
-    cli->init(MAIN);
+    cli->init(NETWORK);
     
     auto connection = connect(DNS, PORT);
     SM_TM->ThreadBarrier->SignalAndWait();
@@ -111,7 +113,7 @@ void Display::threadFunction()
         processHeartbeats();
         if (Console::KeyAvailable) { refreshFlag = Console::ReadKey(true).Key == ConsoleKey::R; }
         if (connection == SUCCESS) { communicate(); }
-        else if (refreshFlag) { connectionReattempt(); }
+        else if (refreshFlag) { connection = connectionReattempt(); }
         cli->update();
         Thread::Sleep(20);
     }
@@ -120,7 +122,7 @@ void Display::threadFunction()
 
 
 cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData)
-    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(MAIN)
+    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK)
 {
     elemPositions = gcnew array<uint8_t, 3>(7, 6, 2) {
         { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
@@ -130,6 +132,8 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 }, { 95, 21} },              // Connection co-ords
         { { 28, 7 }, { 28, 9 }, { 28, 11 }, { 28, 13 }, { 28, 15 } },                                                                 //Network co-ords
         {}                                                                  //GPS Log co-ords
+    };
+    connectionStatus = gcnew array<Stopwatch^>(5) { gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch, gcnew Stopwatch
     };
 
 }
@@ -179,7 +183,7 @@ void cliInterface::init(window selectedWindow)
         "=======================================================================================================================\n" +
         "                                                     NETWORK INFO                                                      \n" +
         "                                                                                                                       \n" +
-        "        Process             Connection Status            IP Address               Uptime                               \n" +
+        "        Process             Connection Status       Local IP Address             Remote IP Address        Uptime       \n" +
         "                                                                                                                       \n" +
         "        Laser                                                                                                          \n" +
         "                                                                                                                       \n" +
@@ -196,7 +200,7 @@ void cliInterface::init(window selectedWindow)
         "                                                                                                                       \n" +
         "                                                                                                                       \n" +
         "                                                                                                                       \n" +
-        "                                                                                                                       \n" +
+        " Press R to reattempt connection                                                                                       \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
         "(press Q to quit)");
@@ -328,13 +332,24 @@ void cliInterface::updateConnectionStatus()
 void cliInterface::updateNetwork() {
     auto handles = displayData->connectionHandles;
 
-    for (int i = 0; i < handles->Length; i++) {
-        const char* connected = handles[i]->Connected ? "Connected" : "Disconnected";
-        //System::Net::IPaddress = IPAddress::Parse((((IPEndPoint^)(s->RemoteEndPoint))->Address)->ToString())
-          //  ((IPEndPoint^)(s->RemoteEndPoint))->Port.ToString());
+    for (int i = 0; i < 4; i++) {
         Console::SetCursorPosition(elemPositions[5, i, 0], elemPositions[5, i, 1]);
-        //Console::Write("{0}            {1}             {2}       {3:00}:{4:00}:{5:00}",
-          //  String(connected), );
+        if (connectionStatus[i]->IsRunning) {
+            Console::CursorLeft = 106;
+            Console::Write("{0:00}:{1:00}:{2:00}", connectionStatus[i]->Elapsed.Hours, connectionStatus[i]->Elapsed.Minutes, connectionStatus[i]->Elapsed.Seconds);
+        }
+        else if (handles[i]->Connected && !connectionStatus[i]->IsRunning) {
+            connectionStatus[i]->Start();
+            Console::ForegroundColor = ConsoleColor::Green;
+            Console::Write("Connected               {0}              {1}",
+                 getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
+        }
+        else {
+            Console::ForegroundColor = ConsoleColor::Red;
+            Console::Write("Disconnected                  N/A                            N/A                                ");
+           
+        }
+        Console::ResetColor();
     }
     // add controller data
 
@@ -343,4 +358,12 @@ void cliInterface::updateNetwork() {
 
 void cliInterface::updateGPSLogs() {
 
+}
+
+String^ getRemoteIPAddress(Socket^ s) {
+    return (((IPEndPoint^)(s->RemoteEndPoint))->Address)->ToString() + ":" + ((IPEndPoint^)(s->RemoteEndPoint))->Port.ToString();
+}
+
+String^ getLocalIPAddress(Socket^ s) {
+    return (((IPEndPoint^)(s->LocalEndPoint))->Address)->ToString() + ":" + ((IPEndPoint^)(s->LocalEndPoint))->Port.ToString();
 }

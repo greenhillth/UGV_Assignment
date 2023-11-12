@@ -8,6 +8,7 @@ Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISP
 	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
 	SendData = Encoding::ASCII->GetBytes("5309693\n");
+	SM_DISPLAY->connectionHandles[0] = Client;
 }
 
 error_state Laser::processSharedMemory()
@@ -76,6 +77,7 @@ error_state Laser::connect(String^ hostName, int portNumber)
 		return ERR_CONNECTION;
 	}
 
+	SM_DISPLAY->connectionHandles[0] = Client;
 	Stream = Client->GetStream();
 
 	Client->NoDelay = true;

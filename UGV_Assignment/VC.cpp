@@ -11,6 +11,7 @@ VehicleControl::VehicleControl(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM
     ReadData = gcnew array<unsigned char>(2048);
     SendData = gcnew array<unsigned char>(128);
     SendData = Encoding::ASCII->GetBytes("5309693\n");
+    SM_DISPLAY->connectionHandles[3] = Client;
 
     command = gcnew String("# <steer> <speed> <flag> #");
     flag = false;
@@ -28,6 +29,7 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
+    SM_DISPLAY->connectionHandles[3] = Client;
     Stream = Client->GetStream();
 
     Client->NoDelay = true;

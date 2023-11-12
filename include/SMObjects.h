@@ -77,6 +77,8 @@ public:
     double Northing;
     double Easting;
     double Height;
+    unsigned int CRC;
+    DateTime timestamp;
 
     SM_GNSS() {
         lockObject = gcnew Object();
@@ -103,16 +105,18 @@ public:
     Object^ lockObject;
     array<Threading::ThreadState>^ threadStatus;
     array<bool>^ connectionStatus;
+    array<TcpClient^>^ connectionHandles;
     ControllerInterface* Controller;
     String^ sentCommand;
-    array <double>^ GPSData;
+    SM_GNSS^ GPSData;
+    SM_Laser^ LaserData;
     Stopwatch^ uptime;
 
-    SM_Display() {
+    SM_Display(SM_GNSS^ SM_GPS, SM_Laser^ SM_LASER) : GPSData(SM_GPS), LaserData(SM_LASER) {
         lockObject = gcnew Object();
         threadStatus = gcnew array<Threading::ThreadState>(6);
         connectionStatus = gcnew array<bool>(5);
-        GPSData = gcnew array <double> (3);
+        connectionHandles = gcnew array<TcpClient^>(4); // TODO - MERGE WITH CONNECTIONSTATUS
         uptime = gcnew Stopwatch;
         uptime->Start();
         

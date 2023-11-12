@@ -9,7 +9,7 @@ ThreadManagement::ThreadManagement()
 	SM_LASER = gcnew SM_Laser;
 	SM_GPS = gcnew SM_GNSS;
 	SM_VC = gcnew SM_VehicleControl;
-	SM_DISPLAY = gcnew SM_Display;
+	SM_DISPLAY = gcnew SM_Display(SM_GPS, SM_LASER);
 }
 
 void ThreadManagement::run() { threadFunction(); }
@@ -20,11 +20,6 @@ error_state ThreadManagement::processSharedMemory()
 	for (int i=1; i < ThreadList->Length; i++) {
 		SM_DISPLAY->threadStatus[i] = ThreadList[i]->ThreadState;
 	}
-
-	SM_DISPLAY->sentCommand = SM_VC->formattedCMD;
-	SM_DISPLAY->GPSData[0] = SM_GPS->Northing;
-	SM_DISPLAY->GPSData[1] = SM_GPS->Easting;
-	SM_DISPLAY->GPSData[2] = SM_GPS->Height;
 
 	Monitor::Exit(SM_DISPLAY->lockObject);
 	return SUCCESS;
@@ -74,7 +69,7 @@ void ThreadManagement::threadFunction()
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew GNSS(SM_TM, SM_GPS, SM_DISPLAY), &GNSS::threadFunction), false, bit_GNSS, "GNSS Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew Controller(SM_TM, SM_VC, SM_DISPLAY), &Controller::threadFunction), true, bit_CONTROLLER, "Controller Thread"),
 		gcnew ThreadProperties(gcnew ThreadStart(gcnew VehicleControl(SM_TM, SM_VC, SM_DISPLAY), &VehicleControl::threadFunction), true, bit_VC, "Vehicle Control Thread"),
-		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM, SM_LASER, SM_DISPLAY), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
+		gcnew ThreadProperties(gcnew ThreadStart(gcnew Display(SM_TM, SM_DISPLAY), &Display::threadFunction), true, bit_DISPLAY, "Display Thread")
 	};
 
 	ThreadList = gcnew array<Thread^>(ThreadPropertiesList->Length);		// Create list of threads

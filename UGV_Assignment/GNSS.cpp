@@ -67,7 +67,7 @@ error_state GNSS::communicate()
     unsigned int header = 0;
     Byte data;
     do {
-        data = Stream->ReadByte();
+        data = Stream->ReadByte();                      //ADD EXCEPTION HANDLING FOR STREAM UNAVAILABLE
         if (static_cast<int>(data) == -1) { return ERR_INVALID_DATA; }
         header = (header << 8) | data;
     } while (header != 0xAA44121C);
@@ -99,12 +99,11 @@ error_state GNSS::processSharedMemory()
     SM_GPS->Northing = Northing;
     SM_GPS->Easting = Easting;
     SM_GPS->Height = Height;
+    SM_GPS->CRC = BitConverter::ToUInt32(GNSSData, 108);
+    SM_GPS->timestamp = DateTime::Now;
     Monitor::Exit(SM_GPS->lockObject);
     for (int i = 4; i < 112; i++) { GNSSData[i] = 0; }
 
-    SM_DISPLAY->GPSData[0] = Northing;
-    SM_DISPLAY->GPSData[1] = Easting;
-    SM_DISPLAY->GPSData[2] = Height;
     return SUCCESS;
 };
 

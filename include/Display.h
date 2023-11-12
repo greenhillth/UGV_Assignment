@@ -11,10 +11,17 @@ typedef enum {
 	CONNECTION,
 }cliElem;
 
+enum window {
+	INACTIVE = -1,
+	MAIN,
+	NETWORK,
+	GPSLOGS
+};
+
 ref class cliInterface {
 public:
 	cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData);
-	void init();
+	void init(window selectedWindow);
 	void update();
 
 private:
@@ -25,7 +32,10 @@ private:
 	void updateConnectionStatus();
 	void updateUptime();
 
-	bool windowActive;
+	void updateNetwork();
+	void updateGPSLogs();
+
+	window activeWindow;
 	SM_ThreadManagement^ ThreadInfo;
 	SM_Display^ displayData;
 	array<uint8_t, 3>^ elemPositions;
@@ -34,7 +44,7 @@ private:
 ref class Display : public NetworkedModule
 {
 public:
-	Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY);
+	Display(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY);
 	void sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream);
 	error_state connect(String^ hostName, int portNumber) override;
 	error_state connectionReattempt();
@@ -47,7 +57,7 @@ public:
 
 private:
 	array<unsigned char>^ SendData;
-	SM_Laser^ SM_LASER;
+	SM_Display^ SM_DISPLAY;
 	cliInterface^ cli;
 };
 

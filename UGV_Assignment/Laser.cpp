@@ -2,7 +2,6 @@
 
 #define LASER_PORT  23000
 
-//TODO - Add simulator address constructor functionality
 Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
 	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), LASER_PORT), SM_LASER(SM_LASER)
 {

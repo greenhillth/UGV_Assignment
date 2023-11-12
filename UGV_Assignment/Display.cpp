@@ -135,6 +135,7 @@ void Display::processKey() {
         break;
     case ConsoleKey::R:
         connectionReattempt();
+        cli->forceRefresh();
         break;
     }
     pressedKey = ConsoleKey::Clear;
@@ -148,7 +149,7 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 28, 22 }, { 55, 22 } },                                         // GPS co-ord
         { { 50, 13 } },                                                   // CMD co-ord
         { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 4, 21 } },               // Controller co-ords
-        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 }, { 95, 21} },              // Connection co-ords
+        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 95, 20 }, { 103, 21} },              // Connection co-ords
         { { 28, 7 }, { 28, 9 }, { 28, 11 }, { 28, 13 }, { 28, 15 } },                                                                 //Network co-ords
         {}                                                                  //GPS Log co-ords
     };
@@ -183,8 +184,8 @@ void cliInterface::init(window selectedWindow)
         "    [button] : [value]                           [=|   WEEDER      |]                     Laser - Connected            \n" +
         "    left trigger  :                               ~_|_____________ |                      Display - Connected          \n" +
         "    right trigger :                                 //||      || ||                       GNSS - Connected             \n" +
-        "    right stick   :                                (_)(_)    (_)(_)                       Controller - Connected       \n" +
-        "                                                                                          VC - Connected               \n" +
+        "    right stick   :                                (_)(_)    (_)(_)                       VC - Connected               \n" +
+        "                                                                                          Controller - Connected       \n" +
         "                       CRC:                    Coords:  x,y,z                        Uptime:                           \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
@@ -375,9 +376,23 @@ void cliInterface::updateNetwork() {
         }
         else {
             Console::ForegroundColor = ConsoleColor::Red;
-            Console::Write("Disconnected                  N/A                            N/A                                ");
+            Console::Write("Disconnected                 N/A                           N/A                                ");
            
         }
+        Console::ResetColor();
+    }
+    Console::SetCursorPosition(elemPositions[5, 4, 0], elemPositions[5, 4, 1]);
+    if (displayData->connectionStatus[4]->IsRunning) {
+        auto time = displayData->connectionStatus[4]->Elapsed;
+        Console::ForegroundColor = ConsoleColor::Green;
+        Console::Write("Connected");
+        Console::ResetColor();
+        Console::Write("                    N/A                           N/A       "
+            +"         {0:00}:{1:00}:{2:00}", time.Hours, time.Minutes, time.Seconds);
+    }
+    else {
+        Console::ForegroundColor = ConsoleColor::Red;
+        Console::Write("Disconnected                                                                                 ");
         Console::ResetColor();
     }
     reinitialise = false;

@@ -30,7 +30,7 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
         return ERR_CONNECTION;
     }
     SM_DISPLAY->connectionHandles[3] = Client;
-    SM_DISPLAY->connectionStatus[4]->Start();
+    SM_DISPLAY->connectionStatus[3]->Start();
     Stream = Client->GetStream();
 
     Client->NoDelay = true;

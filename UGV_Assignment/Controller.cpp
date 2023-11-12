@@ -31,12 +31,12 @@ error_state Controller::processSharedMemory()
 	bool connected = connectedController->IsConnected();
 	Monitor::Enter(SM_DISPLAY->lockObject);
 	if (connected) {
-		SM_DISPLAY->connectionStatus[3]->Start();
+		SM_DISPLAY->connectionStatus[4]->Start();
 		currentState = connectedController->GetState();
 		SM_DISPLAY->Controller = connectedController;
 	}
 	else { 
-		SM_DISPLAY->connectionStatus[3]->Reset();
+		SM_DISPLAY->connectionStatus[4]->Reset();
 	}
 	Monitor::Exit(SM_DISPLAY->lockObject);
 

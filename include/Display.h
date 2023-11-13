@@ -45,6 +45,10 @@ private:
 	array<uint8_t, 3>^ elemPositions;
 	bool reinitialise;
 
+	uint32_t cachedCRC;
+	array<String^>^ GPSLogs;
+	int logIndex;
+
 };
 
 ref class Display : public NetworkedModule
@@ -67,6 +71,7 @@ private:
 	SM_Display^ SM_DISPLAY;
 	cliInterface^ cli;
 	ConsoleKey pressedKey;
+
 };
 
 String^ getRemoteIPAddress(Socket^ s);

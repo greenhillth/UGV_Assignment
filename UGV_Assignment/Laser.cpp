@@ -178,7 +178,7 @@ void Laser::threadFunction()
 		//}
 		Thread::Sleep(20);
 	}
-	
+	Stream->Close();
 	Client->Close();
 	Console::WriteLine("Laser thread is terminating");
 }

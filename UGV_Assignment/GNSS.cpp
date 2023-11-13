@@ -1,8 +1,8 @@
 #include "GNSS.h"
 
 #define GNSS_PORT 24000
-
 #define CRC32_POLYNOMIAL 0xEDB88320L
+
 
 unsigned long CRC32Value(int i)
 {
@@ -174,5 +174,7 @@ void GNSS::threadFunction()
         }
         Thread::Sleep(20);
     }
+    Stream->Close();
+    Client->Close();
     Console::WriteLine("GNSS thread is terminating");
 }

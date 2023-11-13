@@ -1,6 +1,7 @@
 #include "Display.h"
 
 #define DISPLAY_PORT  28000
+constexpr int DISPLAY_ROWS{ 16 };
 
 
 Display::Display(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY) : SM_DISPLAY(SM_DISPLAY),
@@ -119,6 +120,10 @@ void Display::threadFunction()
         cli->update();
         if (pressedKey != ConsoleKey::Clear) { processKey(); }
     }
+    if (Client->Connected) {
+    Stream->Close();
+    Client->Close();
+    }
     Console::WriteLine("Display thread is terminating");
 }
 
@@ -129,6 +134,9 @@ void Display::processKey() {
         break;
     case ConsoleKey::N:
         cli->changeWindow(NETWORK);
+        break;
+    case ConsoleKey::G:
+        cli->changeWindow(GPSLOGS);
         break;
     case ConsoleKey::Q:
         Console::Clear();
@@ -145,7 +153,8 @@ void Display::processKey() {
 }
 
 cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData)
-    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK), reinitialise(false)
+    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK), reinitialise(false),
+    cachedCRC(0), logIndex(0)
 {
     elemPositions = gcnew array<uint8_t, 3>(7, 6, 2) {
         { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
@@ -156,6 +165,7 @@ cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayD
         { { 28, 7 }, { 28, 9 }, { 28, 11 }, { 28, 13 }, { 28, 15 } },                                                                 //Network co-ords
         {}                                                                  //GPS Log co-ords
     };
+    GPSLogs = gcnew array<String^>(DISPLAY_ROWS);
 }
 
 void cliInterface::init(window selectedWindow)
@@ -192,7 +202,7 @@ void cliInterface::init(window selectedWindow)
         "                       CRC:                    Coords:  x,y,z                        Uptime:                           \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
-        "(press Q to quit, or N to switch to Networking Menu)");
+        "(press N to switch to Networking Menu, G to switch to GPS logs, or Q to quit)");
     break;
     case NETWORK:
     Console::WriteLine(
@@ -221,8 +231,8 @@ void cliInterface::init(window selectedWindow)
         " Press R to reattempt connection                                                                                       \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
-        "(press Q to quit, or M to switch to Main Menu)");
-    break;
+        "(press M to switch to Main Menu, G to switch to GPS logs, or Q to quit)");
+        break;
     
     case GPSLOGS:
     Console::WriteLine(
@@ -251,7 +261,8 @@ void cliInterface::init(window selectedWindow)
         "                                                                                                                       \n" +
         "=======================================================================================================================\n" +
         "=======================================================================================================================\n" +
-        "(press Q to quit)");
+        "(press M to switch to Main Menu, N to switch to Networking Menu, or Q to quit)");
+
     break;
     }
 }
@@ -405,6 +416,27 @@ void cliInterface::updateNetwork() {
 }
 
 void cliInterface::updateGPSLogs() {
+    //check if gps data has updated by comparing CRC values
+
+    if (!(cachedCRC == displayData->GPSData->CRC)) {
+        int currentIndex = logIndex;
+        cachedCRC = displayData->GPSData->CRC;
+        auto timestamp = DateTime::Now;
+        auto reading = String::Format("{0:G}    {1}\t      {2:00.0}\t       {3}\t          {4:X}    ", timestamp,
+            displayData->GPSData->Northing, displayData->GPSData->Easting, displayData->GPSData->Height, cachedCRC);
+        GPSLogs->SetValue(reading, currentIndex);
+        logIndex = currentIndex<DISPLAY_ROWS-1?currentIndex+1:0;
+
+        for (int i = 0; i < GPSLogs->Length; i++) {
+            Console::SetCursorPosition(6, 7 + i);
+            
+            if (GPSLogs->GetValue(i) == nullptr) { break; }
+            
+            Console::Write("{0}", GPSLogs[currentIndex]);
+            currentIndex = currentIndex == 0 ? GPSLogs->Length-1 : currentIndex-1;
+
+        }
+    }
 
 }
 

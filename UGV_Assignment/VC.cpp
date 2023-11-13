@@ -122,6 +122,11 @@ void VehicleControl::threadFunction()
         communicate();
         Thread::Sleep(100);
     }
+    commandStr(0, 0);
+    communicate();
+    Thread::Sleep(100);
+    Stream->Close();
+    Client->Close();
 
     Console::WriteLine("Vehicle control thread is terminating");
 }

@@ -131,6 +131,9 @@ void Display::processKey() {
         cli->changeWindow(NETWORK);
         break;
     case ConsoleKey::Q:
+        Console::Clear();
+        Console::WriteLine("Q Pressed - Terminating program");
+        Thread::Sleep(100);
         shutdownThreads();
         break;
     case ConsoleKey::R:
@@ -369,15 +372,15 @@ void cliInterface::updateNetwork() {
             Console::CursorLeft = 106;
             Console::Write("{0:00}:{1:00}:{2:00}", displayData->connectionStatus[i]->Elapsed.Hours, displayData->connectionStatus[i]->Elapsed.Minutes, displayData->connectionStatus[i]->Elapsed.Seconds);
         }
+        else if (!displayData->connectionStatus[i]->IsRunning) {
+            Console::ForegroundColor = ConsoleColor::Red;
+            Console::Write("Disconnected                 N/A                           N/A                                ");
+           
+        }
         else if ((handles[i]->Connected)) {
             Console::ForegroundColor = ConsoleColor::Green;
             Console::Write("Connected               {0}              {1}",
                  getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
-        }
-        else {
-            Console::ForegroundColor = ConsoleColor::Red;
-            Console::Write("Disconnected                 N/A                           N/A                                ");
-           
         }
         Console::ResetColor();
     }

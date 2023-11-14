@@ -127,8 +127,8 @@ error_state GNSS::connect(String^ hostName, int portNumber)
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
-    Client->ReceiveTimeout = 500;
-    Client->SendTimeout = 500;
+    Client->ReceiveTimeout = 2500;
+    Client->SendTimeout = 2500;
     Client->ReceiveBufferSize = 2048;
 
     return SUCCESS;

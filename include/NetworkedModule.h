@@ -14,8 +14,8 @@ For clarification of inheritance requirements see diagram in the assignment spec
 
 // You will need to select which address to use depending on if you are working with the simulator (127.0.0.1)
 // or the physical robot in the lab (192.168.1.200).
-#define WEEDER_ADDRESS "127.0.0.1"
-//#define WEEDER_ADDRESS "192.168.1.200"
+//#define WEEDER_ADDRESS "127.0.0.1"
+#define WEEDER_ADDRESS "192.168.1.200"
 #define DISPLAY_ADDRESS "127.0.0.1" // Display is always running locally
 
 ref class NetworkedModule abstract : public UGVModule
@@ -26,8 +26,6 @@ ref class NetworkedModule abstract : public UGVModule
 			Stream(nullptr), timeout(gcnew Stopwatch), connectionAttempts(0)  {}
 		virtual error_state connect(String^ hostName, int portNumber) = 0;	// Establish TCP connection
 		virtual error_state communicate() = 0;								// Communicate over TCP connection (includes any error checking required on data)
-
-		// error_state write(array<unsigned char>^ WriteData) {}
 
 	protected:
 		TcpClient^ Client;					// Handle for TCP connection

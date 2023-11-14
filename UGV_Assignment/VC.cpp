@@ -11,6 +11,7 @@ VehicleControl::VehicleControl(SM_ThreadManagement^ SM_TM, SM_VehicleControl^ SM
     ReadData = gcnew array<unsigned char>(2048);
     SendData = gcnew array<unsigned char>(128);
     SendData = Encoding::ASCII->GetBytes("5309693\n");
+    SM_DISPLAY->connectionHandles[3] = Client;
 
     command = gcnew String("# <steer> <speed> <flag> #");
     flag = false;
@@ -28,6 +29,8 @@ error_state VehicleControl::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
+    SM_DISPLAY->connectionHandles[3] = Client;
+    SM_DISPLAY->connectionStatus[3]->Start();
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -76,11 +79,6 @@ error_state VehicleControl::processSharedMemory()
 {
     commandStr(SM_VC->Steering, SM_VC->Speed);
 
-    Monitor::Enter(SM_DISPLAY->lockObject);
-    SM_DISPLAY->connectionStatus[4] = Client->Connected;
-    Monitor::Exit(SM_DISPLAY->lockObject);
-
-
     return SUCCESS;
 }
 
@@ -124,6 +122,11 @@ void VehicleControl::threadFunction()
         communicate();
         Thread::Sleep(100);
     }
+    commandStr(0, 0);
+    communicate();
+    Thread::Sleep(100);
+    Stream->Close();
+    Client->Close();
 
     Console::WriteLine("Vehicle control thread is terminating");
 }

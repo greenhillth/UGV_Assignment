@@ -11,13 +11,23 @@ typedef enum {
 	CONNECTION,
 }cliElem;
 
+enum window {
+	INACTIVE = -1,
+	MAIN,
+	NETWORK,
+	GPSLOGS
+};
+
 ref class cliInterface {
 public:
 	cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData);
-	void init();
+	void init(window selectedWindow);
 	void update();
+	void changeWindow(window requested) { requestedWindow = requested; }
+	void forceRefresh();
 
 private:
+
 	void updateThreadStatus();
 	void updateGPS();
 	void updateCMD();
@@ -25,16 +35,26 @@ private:
 	void updateConnectionStatus();
 	void updateUptime();
 
-	bool windowActive;
+	void updateNetwork();
+	void updateGPSLogs();
+
+	window activeWindow;
+	window requestedWindow;
 	SM_ThreadManagement^ ThreadInfo;
 	SM_Display^ displayData;
 	array<uint8_t, 3>^ elemPositions;
+	bool reinitialise;
+
+	uint32_t cachedCRC;
+	array<String^>^ GPSLogs;
+	int logIndex;
+
 };
 
 ref class Display : public NetworkedModule
 {
 public:
-	Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY);
+	Display(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY);
 	void sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream);
 	error_state connect(String^ hostName, int portNumber) override;
 	error_state connectionReattempt();
@@ -44,10 +64,15 @@ public:
 	void shutdownThreads();
 	bool getShutdownFlag() override;
 	void threadFunction() override;
+	void processKey();
 
 private:
 	array<unsigned char>^ SendData;
-	SM_Laser^ SM_LASER;
+	SM_Display^ SM_DISPLAY;
 	cliInterface^ cli;
+	ConsoleKey pressedKey;
+
 };
 
+String^ getRemoteIPAddress(Socket^ s);
+String^ getLocalIPAddress(Socket^ s);

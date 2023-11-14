@@ -1,8 +1,8 @@
 #include "GNSS.h"
 
 #define GNSS_PORT 24000
-
 #define CRC32_POLYNOMIAL 0xEDB88320L
+
 
 unsigned long CRC32Value(int i)
 {
@@ -38,6 +38,7 @@ GNSS::GNSS(SM_ThreadManagement^ SM_TM, SM_GNSS^ SM_GPS, SM_Display^ SM_DISPLAY)
     : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), GNSS_PORT), SM_GPS(SM_GPS)
 {
     GNSSData = gcnew array<unsigned char>(112) { 0xAA, 0x44, 0x12, 0x1C };
+    SM_DISPLAY->connectionHandles[2] = Client;
 }
 
 
@@ -67,7 +68,7 @@ error_state GNSS::communicate()
     unsigned int header = 0;
     Byte data;
     do {
-        data = Stream->ReadByte();
+        data = Stream->ReadByte();                      //ADD EXCEPTION HANDLING FOR STREAM UNAVAILABLE
         if (static_cast<int>(data) == -1) { return ERR_INVALID_DATA; }
         header = (header << 8) | data;
     } while (header != 0xAA44121C);
@@ -99,12 +100,11 @@ error_state GNSS::processSharedMemory()
     SM_GPS->Northing = Northing;
     SM_GPS->Easting = Easting;
     SM_GPS->Height = Height;
+    SM_GPS->CRC = BitConverter::ToUInt32(GNSSData, 108);
+    SM_GPS->timestamp = DateTime::Now;
     Monitor::Exit(SM_GPS->lockObject);
     for (int i = 4; i < 112; i++) { GNSSData[i] = 0; }
 
-    SM_DISPLAY->GPSData[0] = Northing;
-    SM_DISPLAY->GPSData[1] = Easting;
-    SM_DISPLAY->GPSData[2] = Height;
     return SUCCESS;
 };
 
@@ -122,11 +122,13 @@ error_state GNSS::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
+    SM_DISPLAY->connectionHandles[2] = Client;
+    SM_DISPLAY->connectionStatus[2]->Start();
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
-    Client->ReceiveTimeout = 500;
-    Client->SendTimeout = 500;
+    Client->ReceiveTimeout = 2500;
+    Client->SendTimeout = 2500;
     Client->ReceiveBufferSize = 2048;
 
     return SUCCESS;
@@ -166,12 +168,13 @@ void GNSS::threadFunction()
     while (!getShutdownFlag() && connection == SUCCESS) {
         
         processHeartbeats();
-        SM_DISPLAY->connectionStatus[2] = Client->Connected;
         if (communicate() == SUCCESS && checkData() == SUCCESS)
         {
             processSharedMemory();
         }
         Thread::Sleep(20);
     }
+    Stream->Close();
+    Client->Close();
     Console::WriteLine("GNSS thread is terminating");
 }

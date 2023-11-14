@@ -1,23 +1,25 @@
 #include "Display.h"
 
 #define DISPLAY_PORT  28000
+constexpr int DISPLAY_ROWS{ 16 };
 
 
-Display::Display(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
-    : NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(DISPLAY_ADDRESS), DISPLAY_PORT), SM_LASER(SM_LASER)
+Display::Display(SM_ThreadManagement^ SM_TM, SM_Display^ SM_DISPLAY) : SM_DISPLAY(SM_DISPLAY),
+    NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(DISPLAY_ADDRESS), DISPLAY_PORT)
 {
     cli = gcnew cliInterface(SM_TM, SM_DISPLAY);
+    SM_DISPLAY->connectionHandles[1] = Client;
 }
 
 void Display::sendDisplayData(array<double>^ xData, array<double>^ yData, NetworkStream^ stream) {
     // Serialize the data arrays to a byte array
     //(format required for sending)
     array<Byte>^ dataX =
-        gcnew array<Byte>(SM_LASER->x->Length * sizeof(double));
-    Buffer::BlockCopy(SM_LASER->x, 0, dataX, 0, dataX->Length);
+        gcnew array<Byte>(SM_DISPLAY->LaserData->x->Length * sizeof(double));
+    Buffer::BlockCopy(SM_DISPLAY->LaserData->x, 0, dataX, 0, dataX->Length);
     array<Byte>^ dataY =
-        gcnew array<Byte>(SM_LASER->y->Length * sizeof(double));
-    Buffer::BlockCopy(SM_LASER->y, 0, dataY, 0, dataY->Length);
+        gcnew array<Byte>(SM_DISPLAY->LaserData->y->Length * sizeof(double));
+    Buffer::BlockCopy(SM_DISPLAY->LaserData->y, 0, dataY, 0, dataY->Length);
     // Send byte data over connection
     Stream->Write(dataX, 0, dataX->Length);
     Thread::Sleep(10);
@@ -35,6 +37,8 @@ error_state Display::connect(String^ hostName, int portNumber)
         timeout->Start();
         return ERR_CONNECTION;
     }
+    SM_DISPLAY->connectionStatus[1]->Start();
+    SM_DISPLAY->connectionHandles[1] = Client;
     Stream = Client->GetStream();
 
     Client->NoDelay = true;
@@ -50,10 +54,8 @@ error_state Display::connect(String^ hostName, int portNumber)
 }
 
 error_state Display::connectionReattempt() {
-    if (connectionAttempts >= 5) {
-        return CONNECTION_TIMEOUT;
-    }
-    else if (timeout->Elapsed.Seconds > 10) {
+    
+    if (timeout->Elapsed.Seconds > 10) {
         timeout->Reset();
         connectionAttempts++;
         return connect(DNS, PORT);
@@ -63,14 +65,14 @@ error_state Display::connectionReattempt() {
 
 error_state Display::communicate()
 {
-    sendDisplayData(SM_LASER->x, SM_LASER->y, Stream);
+    sendDisplayData(SM_DISPLAY->LaserData->x, SM_DISPLAY->LaserData->y, Stream);
 
     return SUCCESS;
 }
 
 error_state Display::processSharedMemory()
 {
-    SM_DISPLAY->connectionStatus[2] = Client->Connected;
+    
     return SUCCESS;
 }
 
@@ -93,7 +95,9 @@ error_state Display::processHeartbeats()
 }
 
 void Display::shutdownThreads()
-{}
+{
+    SM_TM->shutdown = 0xFF;
+}
 
 bool Display::getShutdownFlag() { return SM_TM->shutdown & bit_DISPLAY; }
 
@@ -102,87 +106,201 @@ void Display::threadFunction()
 {
     Console::WriteLine("Display thread is starting");
     Watch = gcnew Stopwatch;    //TODO - init stopwatches in constructor
-    cli->init();
+    cli->init(NETWORK);
     
     auto connection = connect(DNS, PORT);
     SM_TM->ThreadBarrier->SignalAndWait();
     Watch->Start();
     while (!getShutdownFlag()) {
         processHeartbeats();
-        if (connection == SUCCESS) { communicate(); };
+        if (Console::KeyAvailable) { 
+            pressedKey = Console::ReadKey(true).Key;
+        }
+        if (connection == SUCCESS) { communicate(); }
         cli->update();
-        Thread::Sleep(20);
+        if (pressedKey != ConsoleKey::Clear) { processKey(); }
+    }
+    if (Client->Connected) {
+    Stream->Close();
+    Client->Close();
     }
     Console::WriteLine("Display thread is terminating");
 }
 
-
-cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData) : ThreadInfo(ThreadInfo), displayData(displayData)
-{
-    windowActive = false;
-    elemPositions = gcnew array<uint8_t, 3>(5, 6, 2) {
-        { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
-        { { 55, 22 } },                                                   // GPS co-ord
-        { { 50, 13 } },                                                   // CMD co-ord
-        { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 4, 21 } },               // Controller co-ords
-        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 103, 20 }, { 95, 21} }              // Connection co-ords
-    };
-
+void Display::processKey() {
+    switch (pressedKey) {
+    case ConsoleKey::M:
+        cli->changeWindow(MAIN);
+        break;
+    case ConsoleKey::N:
+        cli->changeWindow(NETWORK);
+        break;
+    case ConsoleKey::G:
+        cli->changeWindow(GPSLOGS);
+        break;
+    case ConsoleKey::Q:
+        Console::Clear();
+        Console::WriteLine("Q Pressed - Terminating program");
+        Thread::Sleep(100);
+        shutdownThreads();
+        break;
+    case ConsoleKey::R:
+        connectionReattempt();
+        cli->forceRefresh();
+        break;
+    }
+    pressedKey = ConsoleKey::Clear;
 }
 
-void cliInterface::init()
+cliInterface::cliInterface(SM_ThreadManagement^ ThreadInfo, SM_Display^ displayData)
+    : ThreadInfo(ThreadInfo), displayData(displayData), activeWindow(NETWORK), reinitialise(false),
+    cachedCRC(0), logIndex(0)
+{
+    elemPositions = gcnew array<uint8_t, 3>(7, 6, 2) {
+        { { 8, 6 }, { 26,6 }, { 44,6 }, { 62,6 }, { 80,6 }, { 98,6 } },   // Thread co-ords
+        { { 28, 22 }, { 55, 22 } },                                         // GPS co-ord
+        { { 50, 13 } },                                                   // CMD co-ord
+        { { 20, 18 }, { 20, 19 }, { 20, 20 }, { 4, 21 } },               // Controller co-ords
+        { { 98, 17 }, { 100, 18 }, { 97, 19 }, { 95, 20 }, { 103, 21} },              // Connection co-ords
+        { { 28, 7 }, { 28, 9 }, { 28, 11 }, { 28, 13 }, { 28, 15 } },                                                                 //Network co-ords
+        {}                                                                  //GPS Log co-ords
+    };
+    GPSLogs = gcnew array<String^>(DISPLAY_ROWS);
+}
+
+void cliInterface::init(window selectedWindow)
 {
     //TODO - set appropriate buffer and window sizes to make display more robust
-    windowActive = true;
     Console::CursorVisible = false;
-    Console::Write("Initialising display interface");
-    Thread::Sleep(50);
     Console::Clear();
 
-    Console::WriteLine("=======================================================================================================================\n" +
-                       "                                                UGV DISPLAY WINDOW v1.00                                               \n" +
-                       "=======================================================================================================================\n" +
-                       "                                                    THREAD STATUS                                                      \n" +
-                       "        Thread #1         Thread #2         Thread #3         Thread #4         Thread #5         Thread #6            \n" +
-                       "            TMM              Laser             GNSS           Controller      Vehicle Control      Display             \n" +
-                       "        Initialising      Initialising      Initialising      Initialising      Initialising      Initialising         \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                     LAST COMMAND SENT:                                                \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "                                                                                                                       \n" +
-                       "    Controller Inputs:                                          ||                        Connection Status:           \n" +
-                       "    [button] : [value]                              ____________||__                      Laser - Connected            \n" +
-                       "    left trigger  :                              [=|   WEEDER      |]                     Display - Connected          \n" +
-                       "    right trigger :                               ~_|_____________ |                      GNSS - Connected             \n" +
-                       "    right stick   :                                 //||      || ||                       Controller - Connected       \n" +
-                       "                                                   (_)(_)    (_)(_)                       VC - Connected               \n" +
-                       "                                               Coords:  x,y,z                        Uptime:                           \n" +
-                       "=======================================================================================================================\n" +
-                       "=======================================================================================================================\n" +
-                       "(press Q to quit)");
+    switch (selectedWindow) {
+    case MAIN:
+    Console::WriteLine(
+        "=======================================================================================================================\n" +
+        "                                                UGV DISPLAY WINDOW v2.00                                               \n" +
+        "=======================================================================================================================\n" +
+        "                                                    THREAD STATUS                                                      \n" +
+        "        Thread #1         Thread #2         Thread #3         Thread #4         Thread #5         Thread #6            \n" +
+        "            TMM              Laser             GNSS           Controller      Vehicle Control      Display             \n" +
+        "        Initialising      Initialising      Initialising      Initialising      Initialising      Initialising         \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                     LAST COMMAND SENT:                                                \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                ||                                                     \n" +
+        "    Controller Inputs:                              ____________||__                      Connection Status:           \n" +
+        "    [button] : [value]                           [=|   WEEDER      |]                     Laser - Connected            \n" +
+        "    left trigger  :                               ~_|_____________ |                      Display - Connected          \n" +
+        "    right trigger :                                 //||      || ||                       GNSS - Connected             \n" +
+        "    right stick   :                                (_)(_)    (_)(_)                       VC - Connected               \n" +
+        "                                                                                          Controller - Connected       \n" +
+        "                       CRC:                    Coords:  x,y,z                        Uptime:                           \n" +
+        "=======================================================================================================================\n" +
+        "=======================================================================================================================\n" +
+        "(press N to switch to Networking Menu, G to switch to GPS logs, or Q to quit)");
+    break;
+    case NETWORK:
+    Console::WriteLine(
+        "=======================================================================================================================\n" +
+        "                                                UGV DISPLAY WINDOW v2.00                                               \n" +
+        "=======================================================================================================================\n" +
+        "                                                     NETWORK INFO                                                      \n" +
+        "                                                                                                                       \n" +
+        "        Process             Connection Status       Local IP Address             Remote IP Address        Uptime       \n" +
+        "                                                                                                                       \n" +
+        "        Laser                                                                                                          \n" +
+        "                                                                                                                       \n" +
+        "        Display                                                                                                        \n" +
+        "                                                                                                                       \n" +
+        "        GNSS                                                                                                           \n" +
+        "                                                                                                                       \n" +
+        "        VC                                                                                                             \n" +
+        "                                                                                                                       \n" +
+        "        Controller                                                                                                     \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        " Press R to reattempt connection                                                                                       \n" +
+        "=======================================================================================================================\n" +
+        "=======================================================================================================================\n" +
+        "(press M to switch to Main Menu, G to switch to GPS logs, or Q to quit)");
+        break;
+    
+    case GPSLOGS:
+    Console::WriteLine(
+        "=======================================================================================================================\n" +
+        "                                                UGV DISPLAY WINDOW v2.00                                               \n" +
+        "=======================================================================================================================\n" +
+        "                                                         GPS LOGS                                                      \n" +
+        "                                                                                                                       \n" +
+        "                  Timestamp           Northing            Easting            Heading                      CRC          \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "                                                                                                                       \n" +
+        "=======================================================================================================================\n" +
+        "=======================================================================================================================\n" +
+        "(press M to switch to Main Menu, N to switch to Networking Menu, or Q to quit)");
+
+    break;
+    }
 }
 
 void cliInterface::update()
 {
-    if (windowActive) {
+    if(activeWindow != requestedWindow) {
+        init(requestedWindow);
+        activeWindow = requestedWindow;
+        reinitialise = true;
+    }
+    switch (activeWindow) {
+    case MAIN:
         updateThreadStatus();
         updateGPS();
         updateCMD();
         updateController();
         updateConnectionStatus();
         updateUptime();
-    }
+        break;
+    case NETWORK:
+        updateNetwork();
+        break;
+    case GPSLOGS:
+        updateGPSLogs();
+        break;
+    };
 }
 
 void cliInterface::updateUptime() {
     TimeSpan time = displayData->uptime->Elapsed;
     Console::SetCursorPosition(93, 22);
     Console::Write("{0:00}:{1:00}:{2:00}.{3:000}       ", time.Hours, time.Minutes, time.Seconds, time.Milliseconds);
+}
+
+void cliInterface::forceRefresh()
+{
+    reinitialise = true;
 }
 
 void cliInterface::updateThreadStatus()
@@ -204,12 +322,12 @@ void cliInterface::updateThreadStatus()
 
 void cliInterface::updateGPS()
 {
-    double northing = displayData->GPSData[0];
-    double easting = displayData->GPSData[1];
-    double height = displayData->GPSData[2];
-    
+    auto data = displayData->GPSData;
     Console::SetCursorPosition(elemPositions[GPS, 0, 0], elemPositions[GPS, 0, 1]);       //set cursor position
-    Console::Write("{0:N}, {1:N}, {2:N}         ",northing, easting, height);
+    Console::Write("{0:X} ", data->CRC);
+    
+    Console::SetCursorPosition(elemPositions[GPS, 1, 0], elemPositions[GPS, 1, 1]);       //set cursor position
+    Console::Write("{0:N}, {1:N}, {2:N}    ",data->Northing, data->Easting, data->Height);
 }
 
 void cliInterface::updateCMD()
@@ -244,8 +362,89 @@ void cliInterface::updateConnectionStatus()
     auto status = displayData->connectionStatus;
     for (int i = 0; i < status->Length; i++) {
         Console::SetCursorPosition(elemPositions[CONNECTION, i, 0], elemPositions[CONNECTION, i, 1]);
-        if (status[i]) { Console::ForegroundColor = green; Console::Write("Connected   "); }
+        if (status[i]->IsRunning) { Console::ForegroundColor = green; Console::Write("Connected   "); }
         else { Console::ForegroundColor = red; Console::Write("Disconnected"); }
     }
     Console::ResetColor();
+}
+
+void cliInterface::updateNetwork() {
+    auto handles = displayData->connectionHandles;
+
+    for (int i = 0; i < 4; i++) {
+        Console::SetCursorPosition(elemPositions[5, i, 0], elemPositions[5, i, 1]);
+        if (displayData->connectionStatus[i]->IsRunning) {
+            if (reinitialise)
+            {
+                Console::ForegroundColor = ConsoleColor::Green;
+                Console::Write("Connected               {0}              {1}",
+                    getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
+            }
+            Console::CursorLeft = 106;
+            Console::Write("{0:00}:{1:00}:{2:00}", displayData->connectionStatus[i]->Elapsed.Hours, displayData->connectionStatus[i]->Elapsed.Minutes, displayData->connectionStatus[i]->Elapsed.Seconds);
+        }
+        else if (!displayData->connectionStatus[i]->IsRunning) {
+            Console::ForegroundColor = ConsoleColor::Red;
+            Console::Write("Disconnected                 N/A                           N/A                                ");
+           
+        }
+        else if ((handles[i]->Connected)) {
+            Console::ForegroundColor = ConsoleColor::Green;
+            Console::Write("Connected               {0}              {1}",
+                 getLocalIPAddress(handles[i]->Client), getRemoteIPAddress(handles[i]->Client));
+        }
+        Console::ResetColor();
+    }
+    Console::SetCursorPosition(elemPositions[5, 4, 0], elemPositions[5, 4, 1]);
+    if (displayData->connectionStatus[4]->IsRunning) {
+        auto time = displayData->connectionStatus[4]->Elapsed;
+        Console::ForegroundColor = ConsoleColor::Green;
+        Console::Write("Connected");
+        Console::ResetColor();
+        Console::Write("                    N/A                           N/A       "
+            +"         {0:00}:{1:00}:{2:00}", time.Hours, time.Minutes, time.Seconds);
+    }
+    else {
+        Console::ForegroundColor = ConsoleColor::Red;
+        Console::Write("Disconnected                                                                                 ");
+        Console::ResetColor();
+    }
+    reinitialise = false;
+    // add controller data
+
+        
+}
+
+void cliInterface::updateGPSLogs() {
+    //check if gps data has updated by comparing CRC values
+
+    if (!(cachedCRC == displayData->GPSData->CRC)) {
+        int currentIndex = logIndex;
+        cachedCRC = displayData->GPSData->CRC;
+        auto timestamp = DateTime::Now;
+        auto reading = String::Format("\t{0:G}    {1}\t      {2:00.0}\t       {3}\t          {4:X}    ", timestamp,
+            displayData->GPSData->Northing, displayData->GPSData->Easting, displayData->GPSData->Height, cachedCRC);
+        GPSLogs->SetValue(reading, currentIndex);
+        logIndex = currentIndex<DISPLAY_ROWS-1?currentIndex+1:0;
+
+        Console::SetCursorPosition(0, 7);
+        for (int i = 0; i < GPSLogs->Length; i++) {
+            //Console::SetCursorPosition(6, 7 + i);
+            
+            if (GPSLogs->GetValue(i) == nullptr) { break; }
+            
+            Console::WriteLine("{0}", GPSLogs[currentIndex]);
+            currentIndex = currentIndex == 0 ? GPSLogs->Length-1 : currentIndex-1;
+
+        }
+    }
+
+}
+
+String^ getRemoteIPAddress(Socket^ s) {
+    return (((IPEndPoint^)(s->RemoteEndPoint))->Address)->ToString() + ":" + ((IPEndPoint^)(s->RemoteEndPoint))->Port.ToString();
+}
+
+String^ getLocalIPAddress(Socket^ s) {
+    return (((IPEndPoint^)(s->LocalEndPoint))->Address)->ToString() + ":" + ((IPEndPoint^)(s->LocalEndPoint))->Port.ToString();
 }

@@ -2,13 +2,13 @@
 
 #define LASER_PORT  23000
 
-//TODO - Add simulator address constructor functionality
 Laser::Laser(SM_ThreadManagement^ SM_TM, SM_Laser^ SM_LASER, SM_Display^ SM_DISPLAY)
 	: NetworkedModule(SM_TM, SM_DISPLAY, gcnew String(WEEDER_ADDRESS), LASER_PORT), SM_LASER(SM_LASER)
 {
 	ReadData = gcnew array<unsigned char>(2048);
 	SendData = gcnew array<unsigned char>(128);
 	SendData = Encoding::ASCII->GetBytes("5309693\n");
+	SM_DISPLAY->connectionHandles[0] = Client;
 }
 
 error_state Laser::processSharedMemory()
@@ -77,6 +77,8 @@ error_state Laser::connect(String^ hostName, int portNumber)
 		return ERR_CONNECTION;
 	}
 
+	SM_DISPLAY->connectionHandles[0] = Client;
+	SM_DISPLAY->connectionStatus[0]->Start();
 	Stream = Client->GetStream();
 
 	Client->NoDelay = true;
@@ -167,7 +169,6 @@ void Laser::threadFunction()
 		processHeartbeats();
 		sendCommand("sRN LMDscandata");
 		processSharedMemory();
-		SM_DISPLAY->connectionStatus[0] = Client->Connected;
 
 		if (SM_LASER->valid) {}
 
@@ -177,7 +178,7 @@ void Laser::threadFunction()
 		//}
 		Thread::Sleep(20);
 	}
-	
+	Stream->Close();
 	Client->Close();
 	Console::WriteLine("Laser thread is terminating");
 }

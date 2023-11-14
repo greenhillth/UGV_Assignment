@@ -241,7 +241,7 @@ void cliInterface::init(window selectedWindow)
         "=======================================================================================================================\n" +
         "                                                         GPS LOGS                                                      \n" +
         "                                                                                                                       \n" +
-        "      Timestamp           Northing            Easting            Heading                               CRC             \n" +
+        "                  Timestamp           Northing            Easting            Heading                      CRC          \n" +
         "                                                                                                                       \n" +
         "                                                                                                                       \n" +
         "                                                                                                                       \n" +
@@ -422,17 +422,18 @@ void cliInterface::updateGPSLogs() {
         int currentIndex = logIndex;
         cachedCRC = displayData->GPSData->CRC;
         auto timestamp = DateTime::Now;
-        auto reading = String::Format("{0:G}    {1}\t      {2:00.0}\t       {3}\t          {4:X}    ", timestamp,
+        auto reading = String::Format("\t{0:G}    {1}\t      {2:00.0}\t       {3}\t          {4:X}    ", timestamp,
             displayData->GPSData->Northing, displayData->GPSData->Easting, displayData->GPSData->Height, cachedCRC);
         GPSLogs->SetValue(reading, currentIndex);
         logIndex = currentIndex<DISPLAY_ROWS-1?currentIndex+1:0;
 
+        Console::SetCursorPosition(0, 7);
         for (int i = 0; i < GPSLogs->Length; i++) {
-            Console::SetCursorPosition(6, 7 + i);
+            //Console::SetCursorPosition(6, 7 + i);
             
             if (GPSLogs->GetValue(i) == nullptr) { break; }
             
-            Console::Write("{0}", GPSLogs[currentIndex]);
+            Console::WriteLine("{0}", GPSLogs[currentIndex]);
             currentIndex = currentIndex == 0 ? GPSLogs->Length-1 : currentIndex-1;
 
         }
